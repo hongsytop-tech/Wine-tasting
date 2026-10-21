@@ -32,8 +32,11 @@ jobs:
           cache: true
 
       # Regenerate platform folders (web/) that are gitignored.
+      # flutter create 가 만드는 샘플 테스트(MyApp 참조)는 이 앱과 맞지 않아 삭제.
       - name: flutter create
-        run: flutter create --platforms web --project-name wine_tasting .
+        run: |
+          flutter create --platforms web --project-name wine_tasting .
+          rm -f test/widget_test.dart
 
       - name: Inject app branding (manifest, title)
         run: |
