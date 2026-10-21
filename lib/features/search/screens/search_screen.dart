@@ -44,6 +44,62 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       ));
   }
 
+  /// 마신 와인 기록: 내 와인에 추가하고 바로 평가(테이스팅 노트) 작성.
+  Future<void> _drank(WineSearchResult r) async {
+    final w = await ref.read(winesProvider.notifier).addFromSearch(r);
+    if (mounted) context.push(Routes.newNote(w.id));
+  }
+
+  void _showActions(WineSearchResult r) {
+    final saved =
+        ref.read(winesProvider.notifier).findBySource(r.source, r.sourceId);
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        void run(VoidCallback f) {
+          Navigator.pop(ctx);
+          f();
+        }
+
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title:
+                    Text(r.name, maxLines: 2, overflow: TextOverflow.ellipsis),
+              ),
+              ListTile(
+                leading: const Icon(Icons.local_bar),
+                title: const Text('마셨어요 · 평가 남기기'),
+                subtitle: const Text('색·당도·타닌·산미 등 0~10점 + 평점·메모'),
+                onTap: () => run(() => _drank(r)),
+              ),
+              if (saved == null) ...[
+                ListTile(
+                  leading: const Icon(Icons.add_circle_outline),
+                  title: const Text('내 와인에 추가'),
+                  onTap: () => run(() => _add(r, favorite: false)),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.favorite_border),
+                  title: const Text('즐겨찾기'),
+                  onTap: () => run(() => _add(r, favorite: true)),
+                ),
+              ] else
+                ListTile(
+                  leading: const Icon(Icons.open_in_new),
+                  title: const Text('저장된 와인 열기'),
+                  onTap: () => run(() => context.push(Routes.wine(saved.id))),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final query = ref.watch(searchQueryProvider);
@@ -100,6 +156,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         for (final r in res.results)
                           _ResultTile(
                             result: r,
+                            onTap: () => _showActions(r),
                             onAdd: () => _add(r, favorite: false),
                             onFavorite: () => _add(r, favorite: true),
                           ),
@@ -132,11 +189,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 class _ResultTile extends ConsumerWidget {
   const _ResultTile({
     required this.result,
+    required this.onTap,
     required this.onAdd,
     required this.onFavorite,
   });
 
   final WineSearchResult result;
+  final VoidCallback onTap;
   final VoidCallback onAdd;
   final VoidCallback onFavorite;
 
@@ -156,7 +215,7 @@ class _ResultTile extends ConsumerWidget {
       leading: WineThumb(imageUrl: result.imageUrl, type: result.type),
       title: Text(result.name, maxLines: 2, overflow: TextOverflow.ellipsis),
       subtitle: Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis),
-      onTap: saved == null ? onAdd : () => context.push(Routes.wine(saved.id)),
+      onTap: onTap,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -192,7 +251,8 @@ class _Hint extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.all(24),
       child: Text(
-        '와인 이름(영문 권장)이나 병 뒷면 바코드 숫자(EAN/UPC)로 검색합니다.\n\n'
+        '와인 이름(영문 권장)이나 병 뒷면 바코드 숫자(EAN/UPC)로 검색합니다.\n'
+        '결과를 누르면 "마셨어요 · 평가 남기기"로 바로 기록할 수 있습니다.\n\n'
         '검색 데이터는 Open Food Facts 에서 가져옵니다. 등록되지 않은 와인은 '
         '"직접 입력"으로 추가할 수 있습니다.',
       ),

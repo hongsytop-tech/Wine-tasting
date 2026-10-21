@@ -7,11 +7,12 @@ import 'package:intl/intl.dart';
 import '../../wines/models/wine_type.dart';
 import '../../wines/providers/wines_providers.dart';
 import '../../wines/widgets/rating_stars.dart';
+import '../models/taste_attr.dart';
 import '../models/tasting_note.dart';
 import '../models/tasting_vocab.dart';
 import '../providers/tasting_providers.dart';
 import '../widgets/descriptor_picker.dart';
-import '../widgets/scale_picker.dart';
+import '../widgets/score_slider.dart';
 
 /// 테이스팅 노트 작성 ([wineId]) 또는 수정 ([noteId]).
 class NoteEditScreen extends ConsumerStatefulWidget {
@@ -120,7 +121,12 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
     final wine = ref.watch(wineByIdProvider(n.wineId));
     final type = wine?.type ?? WineType.other;
     final theme = Theme.of(context);
-    const labels = TastingVocab.scaleLabels;
+
+    Widget score(TasteAttr a) => ScoreSlider(
+          attr: a,
+          value: a.of(n),
+          onChanged: (v) => _set((x) => x.withAttr(a, v)),
+        );
 
     Widget section(String title) => Padding(
           padding: const EdgeInsets.only(top: 20, bottom: 6),
@@ -190,61 +196,16 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
                 ),
             ],
           ),
-          ScalePicker(
-            label: '농도',
-            value: n.colorIntensity,
-            labels: labels['colorIntensity']!,
-            onChanged: (v) => _set((x) => x.copyWith(colorIntensity: v)),
-          ),
+          score(TasteAttr.colorIntensity),
           section('향 (Nose)'),
-          ScalePicker(
-            label: '강도',
-            value: n.aromaIntensity,
-            labels: labels['aromaIntensity']!,
-            onChanged: (v) => _set((x) => x.copyWith(aromaIntensity: v)),
-          ),
+          score(TasteAttr.aromaIntensity),
           DescriptorPicker(
             selected: n.aromas,
             onChanged: (v) => _set((x) => x.copyWith(aromas: v)),
           ),
-          section('맛 (Palate)'),
-          ScalePicker(
-            label: '당도',
-            value: n.sweetness,
-            labels: labels['sweetness']!,
-            onChanged: (v) => _set((x) => x.copyWith(sweetness: v)),
-          ),
-          ScalePicker(
-            label: '산도',
-            value: n.acidity,
-            labels: labels['acidity']!,
-            onChanged: (v) => _set((x) => x.copyWith(acidity: v)),
-          ),
-          if (type != WineType.white && type != WineType.sparkling)
-            ScalePicker(
-              label: '타닌',
-              value: n.tannin,
-              labels: labels['tannin']!,
-              onChanged: (v) => _set((x) => x.copyWith(tannin: v)),
-            ),
-          ScalePicker(
-            label: '알코올',
-            value: n.alcohol,
-            labels: labels['alcohol']!,
-            onChanged: (v) => _set((x) => x.copyWith(alcohol: v)),
-          ),
-          ScalePicker(
-            label: '바디',
-            value: n.body,
-            labels: labels['body']!,
-            onChanged: (v) => _set((x) => x.copyWith(body: v)),
-          ),
-          ScalePicker(
-            label: '여운',
-            value: n.finish,
-            labels: labels['finish']!,
-            onChanged: (v) => _set((x) => x.copyWith(finish: v)),
-          ),
+          section('맛 (Palate) · 0~10점'),
+          for (final a in TasteAttr.palate)
+            if (a.appliesTo(type) || a.of(n) != null) score(a),
           const SizedBox(height: 8),
           Text('맛에서 느낀 풍미', style: theme.textTheme.labelLarge),
           DescriptorPicker(

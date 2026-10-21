@@ -7,7 +7,9 @@ import '../../../core/router/app_router.dart';
 import '../../wines/providers/wines_providers.dart';
 import '../../wines/widgets/rating_stars.dart';
 import '../../wines/widgets/wine_thumb.dart';
+import '../models/taste_attr.dart';
 import '../providers/tasting_providers.dart';
+import '../widgets/taste_profile_view.dart';
 
 /// 전체 테이스팅 노트 — 시음일 최신순.
 class NotesScreen extends ConsumerWidget {
@@ -36,7 +38,9 @@ class NotesScreen extends ConsumerWidget {
               itemBuilder: (_, i) {
                 final n = notes[i];
                 final wine = ref.watch(wineByIdProvider(n.wineId));
+                final profile = averageProfile([n]);
                 final summary = [
+                  if (profile.isNotEmpty) profileSummary(profile, max: 3),
                   if (n.aromas.isNotEmpty) n.aromas.take(3).join(', '),
                   if (n.comment.isNotEmpty) n.comment,
                 ].join(' — ');

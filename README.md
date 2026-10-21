@@ -9,19 +9,24 @@
 
 | 탭 | 기능 |
 |---|---|
-| 내 와인 | 저장한 와인 목록, 전체/즐겨찾기 필터, 최근·평점·이름 정렬, 직접 추가 |
-| 검색 | 와인 이름 또는 바코드(EAN/UPC)로 검색 → 내 와인에 추가 / 즐겨찾기 |
+| 내 와인 | 저장한 와인 목록, **전체 / 즐겨찾기 / 마신 와인** 필터, 최근 수정·최근 시음·평점·이름 정렬, 직접 추가 |
+| 검색 | 와인 이름 또는 바코드(EAN/UPC)로 검색 → **마셨어요 · 평가 남기기** / 내 와인에 추가 / 즐겨찾기 |
 | 노트 | 전체 테이스팅 노트 (시음일 최신순) |
 | 마이 | 계정, 지금 동기화, 로그아웃, 웹 자동 업데이트 |
 
-- **와인 상세**: 정보, 내 평점(0.5 단위 별점), 즐겨찾기, 메모, 원본 출처 링크, 해당 와인의 노트 목록
-- **테이스팅 노트**: WSET 체계적 시음법을 단순화한 구조
+- **와인 상세**: 정보, 내 평점(0.5 단위 별점), 즐겨찾기, 메모, 원본 출처 링크
+  - **마신 기록**: 마신 횟수, 마지막 시음일, 노트 평균 평점
+  - **특징 프로필**: 0~10점 막대 그래프. 노트가 여러 개면 기록된 값의 평균입니다.
+- **테이스팅 노트 = 마신 기록 1회**: WSET 체계적 시음법을 단순화한 구조
   - 날짜·장소·동석자, 이번 시음 평점
-  - 외관: 색상, 농도
-  - 향: 강도, 묘사어
-  - 맛: 당도, 산도, 타닌, 알코올, 바디, 여운(1~5), 풍미
+  - **특징 점수 0~10** (슬라이더, ✕로 "기록 안 함")
+    - 외관: 색(옅음↔진함). 색상 이름(루비·가넷 등)은 별도 선택
+    - 향: 향 강도(약함↔강함)
+    - 맛: 당도(드라이↔스위트), 산미, 타닌, 알코올, 바디, 여운
+    - 타닌 입력은 화이트·스파클링에서 숨깁니다.
+  - 향·맛 묘사어: 12개 그룹 프리셋에서 고르거나 직접 입력
   - 결론: 페어링, 구매가, 총평
-  - 묘사어는 12개 그룹 프리셋 중에서 고르거나 직접 입력합니다.
+- 노트가 1개 이상 있는 와인이 "마신 와인"입니다. 따로 상태 값을 두지 않고 노트에서 계산합니다.
 
 ## 와인 데이터 출처
 
@@ -59,7 +64,7 @@ lib/
   features/{auth,wines,search,tasting,settings,update}/{models,services,providers,screens,widgets}
   shell/app_shell.dart · app.dart · main.dart
 supabase/
-  migrations/0001_wines.sql · 0002_tasting_notes.sql · 0003_wine_search_cache.sql
+  migrations/0001_wines.sql · 0002_tasting_notes.sql · 0003_wine_search_cache.sql · 0004_tasting_scores_0_10.sql
   functions/wine-search/{index,openfoodfacts,cache,types}.ts
 .github/workflows/{deploy-web,build-apk,cleanup-artifacts}.yml
 ```
@@ -69,6 +74,7 @@ supabase/
 ### A. Supabase
 1. 프로젝트를 만들고 `SUPABASE_URL`과 `anon key`를 확보합니다.
 2. SQL Editor에서 `supabase/migrations/000*.sql`을 순서대로 실행합니다.
+   - 이미 0001~0003을 실행했다면 `0004_tasting_scores_0_10.sql`만 추가로 실행하면 됩니다. 실행 전에는 0~10점 노트가 서버 저장에서 거부되고, 로컬에만 남았다가 실행 후 동기화됩니다.
    - 404 PGRST205가 나면 `NOTIFY pgrst, 'reload schema';`를 실행합니다.
 3. Edge Function `wine-search`를 배포합니다. `supabase functions deploy wine-search`로 하거나, 대시보드에 4개 파일을 붙여넣습니다.
 4. (선택) Secret `OFF_USER_AGENT`에 앱 이름과 연락처를 넣습니다. Open Food Facts가 식별 가능한 User-Agent를 요청하기 때문입니다.
@@ -92,7 +98,7 @@ flutter run -d chrome
 ## 테스트
 
 ```bash
-flutter analyze && flutter test                        # 동기화 병합 로직, 모델 직렬화
+flutter analyze && flutter test                        # 동기화 병합, 모델 직렬화, 0~10 점수·구버전 환산
 deno test supabase/functions/wine-search/              # Open Food Facts 매핑
 ```
 
@@ -102,5 +108,5 @@ deno test supabase/functions/wine-search/              # Open Food Facts 매핑
 - [ ] Wine-Searcher API 계약 시 `WineSource` 추가 (평론가 점수·가격)
 - [ ] 라벨 사진 → Claude 비전으로 텍스트 추출 → 검색어 자동 입력
 - [ ] 바코드 카메라 스캔 (`mobile_scanner`)
-- [ ] 통계: 종류별/국가별 분포, 평점 추이
+- [ ] 통계: 종류별/국가별 분포, 평점 추이, 마신 와인들의 특징 비교(레이더 차트)
 - [ ] 앱 아이콘·브랜딩 이미지 (현재 Flutter 기본 아이콘)

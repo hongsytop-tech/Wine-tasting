@@ -31,18 +31,6 @@ class TastingVocab {
     }
   }
 
-  /// 1~5 척도 라벨 (낮음 → 높음). WSET 의 low / medium(-) / medium / medium(+) / high.
-  static const scaleLabels = <String, List<String>>{
-    'colorIntensity': ['옅음', '중간-', '중간', '중간+', '진함'],
-    'aromaIntensity': ['약함', '중간-', '중간', '중간+', '강함'],
-    'sweetness': ['드라이', '오프드라이', '미디엄', '스위트', '매우 스위트'],
-    'acidity': ['낮음', '중간-', '중간', '중간+', '높음'],
-    'tannin': ['낮음', '중간-', '중간', '중간+', '높음'],
-    'alcohol': ['낮음', '중간-', '중간', '중간+', '높음'],
-    'body': ['라이트', '미디엄-', '미디엄', '미디엄+', '풀'],
-    'finish': ['짧음', '중간-', '중간', '중간+', '긺'],
-  };
-
   /// 향/맛 묘사어 (그룹 → 묘사어).
   static const aromaGroups = <String, List<String>>{
     '시트러스': ['레몬', '라임', '자몽', '오렌지 껍질'],

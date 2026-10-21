@@ -5,6 +5,7 @@ import '../../../core/providers/core_providers.dart';
 import '../../../core/supabase/supabase_service.dart';
 import '../../../core/sync/synced_repo.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../models/taste_attr.dart';
 import '../models/tasting_note.dart';
 
 const _uuid = Uuid();
@@ -108,4 +109,47 @@ class TastingNotesNotifier extends StateNotifier<List<TastingNote>> {
           n.copyWith(deletedAt: now, updatedAt: now),
     ]);
   }
+}
+
+/// 와인 1병의 시음 요약 (노트가 1개 이상 = "마신 와인").
+class WineTastingSummary {
+  const WineTastingSummary({
+    required this.count,
+    required this.lastTastedAt,
+    required this.avgRating,
+    required this.profile,
+  });
+
+  final int count;
+  final DateTime lastTastedAt;
+
+  /// 노트별 평점의 평균. 평점을 매긴 노트가 없으면 null.
+  final double? avgRating;
+
+  /// 특징 점수 평균 (기록된 항목만).
+  final Map<TasteAttr, double> profile;
+}
+
+/// wineId → 시음 요약. 노트가 없는 와인은 키가 없다.
+final tastingSummaryProvider = Provider<Map<String, WineTastingSummary>>((ref) {
+  final byWine = <String, List<TastingNote>>{};
+  for (final n in ref.watch(visibleNotesProvider)) {
+    (byWine[n.wineId] ??= []).add(n);
+  }
+  return {
+    for (final e in byWine.entries) e.key: _summarize(e.value),
+  };
+});
+
+WineTastingSummary _summarize(List<TastingNote> notes) {
+  final ratings = notes.map((n) => n.rating).whereType<double>().toList();
+  return WineTastingSummary(
+    count: notes.length,
+    lastTastedAt:
+        notes.map((n) => n.tastedAt).reduce((a, b) => a.isAfter(b) ? a : b),
+    avgRating: ratings.isEmpty
+        ? null
+        : ratings.reduce((a, b) => a + b) / ratings.length,
+    profile: averageProfile(notes),
+  );
 }

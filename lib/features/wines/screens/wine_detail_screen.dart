@@ -6,8 +6,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/router/app_router.dart';
 import '../../search/models/wine_search_result.dart';
+import '../../tasting/models/taste_attr.dart';
 import '../../tasting/models/tasting_note.dart';
 import '../../tasting/providers/tasting_providers.dart';
+import '../../tasting/widgets/taste_profile_view.dart';
 import '../models/wine.dart';
 import '../providers/wines_providers.dart';
 import '../widgets/rating_stars.dart';
@@ -50,6 +52,7 @@ class WineDetailScreen extends ConsumerWidget {
       );
     }
     final notes = ref.watch(notesForWineProvider(wineId));
+    final tasting = ref.watch(tastingSummaryProvider)[wineId];
     final theme = Theme.of(context);
     final notifier = ref.read(winesProvider.notifier);
 
@@ -79,7 +82,7 @@ class WineDetailScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push(Routes.newNote(wine.id)),
         icon: const Icon(Icons.edit_note),
-        label: const Text('테이스팅 노트'),
+        label: const Text('마신 기록 · 평가'),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
@@ -129,11 +132,17 @@ class WineDetailScreen extends ConsumerWidget {
             _SourceLink(wine: wine),
           ],
           const Divider(height: 32),
+          if (tasting != null) ...[
+            _TastingSection(summary: tasting),
+            const Divider(height: 32),
+          ],
           Text('테이스팅 노트 (${notes.length})', style: theme.textTheme.titleMedium),
           if (notes.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
-              child: Text('아직 노트가 없습니다. 아래 버튼으로 첫 노트를 작성해 보세요.'),
+              child: Text(
+                '아직 마신 기록이 없습니다. 아래 버튼으로 평가(색·당도·타닌·산미 등 0~10점)를 남겨 보세요.',
+              ),
             ),
           for (final n in notes) _NoteTile(note: n),
         ],
@@ -177,6 +186,8 @@ class _NoteTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final date = DateFormat('yyyy.MM.dd (E)', 'ko_KR').format(note.tastedAt);
     final summary = [
+      if (averageProfile([note]).isNotEmpty)
+        profileSummary(averageProfile([note])),
       if (note.aromas.isNotEmpty) note.aromas.take(4).join(', '),
       if (note.comment.isNotEmpty) note.comment,
     ].join(' — ');
@@ -194,6 +205,45 @@ class _NoteTile extends StatelessWidget {
             ? null
             : Text(summary, maxLines: 2, overflow: TextOverflow.ellipsis),
       ),
+    );
+  }
+}
+
+/// 마신 기록 요약 + 특징 점수(0~10) 프로필.
+class _TastingSection extends StatelessWidget {
+  const _TastingSection({required this.summary});
+
+  final WineTastingSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final s = summary;
+    final info = [
+      '${s.count}회 마심',
+      '마지막 ${DateFormat('yyyy.MM.dd').format(s.lastTastedAt)}',
+      if (s.avgRating != null) '노트 평균 평점 ${scoreText(s.avgRating!)}',
+    ].join(' · ');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('마신 기록', style: theme.textTheme.titleMedium),
+        const SizedBox(height: 4),
+        Text(info),
+        const SizedBox(height: 12),
+        Text(
+          s.count > 1 ? '특징 (0~10점, 노트 ${s.count}개의 평균)' : '특징 (0~10점)',
+          style: theme.textTheme.labelLarge,
+        ),
+        const SizedBox(height: 4),
+        if (s.profile.isEmpty)
+          Text(
+            '노트에 특징 점수가 아직 없습니다.',
+            style: theme.textTheme.bodySmall,
+          )
+        else
+          TasteProfileView(values: s.profile),
+      ],
     );
   }
 }

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
+import '../../tasting/providers/tasting_providers.dart';
+import '../../tasting/widgets/taste_profile_view.dart';
 import '../models/wine.dart';
 import 'rating_stars.dart';
 import 'wine_thumb.dart';
@@ -8,13 +11,15 @@ class WineTile extends StatelessWidget {
   const WineTile({
     super.key,
     required this.wine,
-    this.noteCount = 0,
+    this.tasting,
     this.onTap,
     this.onToggleFavorite,
   });
 
   final Wine wine;
-  final int noteCount;
+
+  /// 마신 와인이면 시음 요약 (마신 날·횟수·특징 점수 평균).
+  final WineTastingSummary? tasting;
   final VoidCallback? onTap;
   final VoidCallback? onToggleFavorite;
 
@@ -27,6 +32,14 @@ class WineTile extends StatelessWidget {
       wine.type.label,
       if (wine.originLabel.isNotEmpty) wine.originLabel,
     ].join(' · ');
+    final t = tasting;
+    final tastedLine = t == null
+        ? null
+        : [
+            '${DateFormat('yy.MM.dd').format(t.lastTastedAt)} 마심'
+                '${t.count > 1 ? ' (${t.count}회)' : ''}',
+            if (t.profile.isNotEmpty) profileSummary(t.profile, max: 3),
+          ].join(' · ');
     return ListTile(
       onTap: onTap,
       leading: WineThumb(imageUrl: wine.imageUrl, type: wine.type),
@@ -41,13 +54,24 @@ class WineTile extends StatelessWidget {
               RatingStars(value: wine.myRating, size: 16),
               const SizedBox(width: 6),
               Text(ratingText(wine.myRating), style: theme.textTheme.bodySmall),
-              if (noteCount > 0) ...[
-                const SizedBox(width: 10),
-                Icon(Icons.edit_note, size: 16, color: theme.hintColor),
-                Text(' $noteCount', style: theme.textTheme.bodySmall),
-              ],
             ],
           ),
+          if (tastedLine != null)
+            Row(
+              children: [
+                Icon(Icons.local_bar,
+                    size: 14, color: theme.colorScheme.primary),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    tastedLine,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
       trailing: IconButton(
