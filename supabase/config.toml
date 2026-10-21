@@ -1,0 +1,6 @@
+project_id = "wine-tasting"
+
+# wine-search 는 anon key 로 호출된다 (기본 verify_jwt = true 유지:
+# Supabase anon/user JWT 가 있어야 호출 가능).
+[functions.wine-search]
+verify_jwt = true

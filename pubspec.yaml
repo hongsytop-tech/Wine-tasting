@@ -1,0 +1,45 @@
+name: wine_tasting
+description: "와인을 검색·즐겨찾기하고 평점과 테이스팅 노트를 기록하는 앱."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State management
+  cupertino_icons: ^1.0.6
+  flutter_riverpod: ^2.5.1
+
+  # Routing
+  go_router: ^14.2.0
+
+  # Backend (버전 상한 고정: 2.15.0+ 는 passkeys 의존성으로 web 부팅이 깨짐)
+  supabase_flutter: ">=2.5.6 <2.15.0"
+
+  # Local cache / config
+  shared_preferences: ^2.2.3
+  flutter_dotenv: ^5.1.0
+
+  # Misc
+  http: ^1.2.0
+  web: ^1.1.0
+  url_launcher: ^6.3.0
+  intl: ^0.19.0
+  uuid: ^4.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env
