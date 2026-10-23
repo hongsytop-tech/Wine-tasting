@@ -29,6 +29,14 @@ jobs:
       - name: Generate platform folders
         run: flutter create . --project-name wine_tasting --org com.winetasting --platforms=android
 
+      # 런처 아이콘(와인 글라스)과 앱 이름 적용. 아이콘은 android_assets/ (scripts/generate_icons.mjs).
+      - name: Apply launcher icon and app name
+        run: |
+          for d in android_assets/mipmap-*; do
+            cp "$d/ic_launcher.png" "android/app/src/main/res/$(basename "$d")/ic_launcher.png"
+          done
+          sed -i 's/android:label="wine_tasting"/android:label="와인노트"/' android/app/src/main/AndroidManifest.xml
+
       # url_launcher 가 외부 브라우저(https)를 열 수 있도록 Android 11+ 패키지 가시성 쿼리 추가
       - name: Patch Android manifest (url_launcher queries)
         run: |

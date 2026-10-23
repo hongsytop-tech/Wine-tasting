@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- 와인노트 앱 아이콘: 버건디 배경 + 레드 와인이 담긴 글라스.
+       글라스는 maskable 안전 영역(중심 반경 40%) 안에 들어가도록 배치. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8E2443"/>
+      <stop offset="1" stop-color="#4A0E24"/>
+    </linearGradient>
+    <clipPath id="bowl">
+      <path d="M170 104 H342 C348 196 318 268 256 284 C194 268 164 196 170 104 Z"/>
+    </clipPath>
+  </defs>
+  <rect id="background" width="512" height="512" fill="url(#bg)"/>
+  <!-- 와인 -->
+  <rect x="150" y="178" width="212" height="120" fill="#E0284F" clip-path="url(#bowl)"/>
+  <ellipse cx="256" cy="178" rx="84" ry="7" fill="#F0567A" clip-path="url(#bowl)"/>
+  <!-- 글라스 -->
+  <path d="M170 104 H342 C348 196 318 268 256 284 C194 268 164 196 170 104 Z"
+        fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linejoin="round"/>
+  <path d="M196 128 C194 170 202 206 220 232" fill="none" stroke="#FFFFFF"
+        stroke-width="9" stroke-linecap="round" opacity="0.45"/>
+  <rect x="249" y="284" width="14" height="104" fill="#FFFFFF"/>
+  <rect x="192" y="384" width="128" height="16" rx="8" fill="#FFFFFF"/>
+</svg>

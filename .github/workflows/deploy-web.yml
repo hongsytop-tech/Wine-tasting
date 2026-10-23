@@ -38,8 +38,11 @@ jobs:
           flutter create --platforms web --project-name wine_tasting .
           rm -f test/widget_test.dart
 
-      - name: Inject app branding (manifest, title)
+      # 와인 아이콘으로 교체 (web_assets/ — scripts/generate_icons.mjs 로 생성).
+      - name: Inject app branding (icons, manifest, title)
         run: |
+          cp web_assets/favicon.png web_assets/apple-touch-icon.png web_assets/icon.svg web/
+          cp web_assets/icons/*.png web/icons/
           python3 - <<'PY'
           import json, pathlib, re
           m = pathlib.Path('web/manifest.json')
@@ -58,6 +61,8 @@ jobs:
           html = p.read_text(encoding='utf-8')
           html = re.sub(r'<title>.*?</title>', '<title>와인노트</title>', html, count=1, flags=re.S)
           html = html.replace('content="wine_tasting"', 'content="와인노트"')
+          html = html.replace('<link rel="apple-touch-icon" href="icons/Icon-192.png">',
+                              '<link rel="apple-touch-icon" href="apple-touch-icon.png">')
           html = html.replace('content="A new Flutter project."',
                               'content="와인 검색·즐겨찾기·평점·테이스팅 노트"')
           p.write_text(html, encoding='utf-8')

@@ -67,6 +67,9 @@ supabase/
   migrations/0001_wines.sql · 0002_tasting_notes.sql · 0003_wine_search_cache.sql · 0004_tasting_scores_0_10.sql
   functions/wine-search/{index,openfoodfacts,cache,types}.ts
 .github/workflows/{deploy-web,build-apk,cleanup-artifacts}.yml
+web_assets/        # 웹 아이콘(파비콘·PWA·iOS) + 원본 icon.svg — CI가 web/ 에 복사
+android_assets/    # 안드로이드 런처 아이콘(mipmap-*) — APK 빌드 시 복사
+scripts/generate_icons.mjs  # icon.svg → 위 PNG 전부 생성 (아이콘 바꿀 때만 실행)
 ```
 
 ## 첫 세팅 체크리스트 (직접 하셔야 하는 것)
@@ -109,4 +112,3 @@ deno test supabase/functions/wine-search/              # Open Food Facts 매핑
 - [ ] 라벨 사진 → Claude 비전으로 텍스트 추출 → 검색어 자동 입력
 - [ ] 바코드 카메라 스캔 (`mobile_scanner`)
 - [ ] 통계: 종류별/국가별 분포, 평점 추이, 마신 와인들의 특징 비교(레이더 차트)
-- [ ] 앱 아이콘·브랜딩 이미지 (현재 Flutter 기본 아이콘)
