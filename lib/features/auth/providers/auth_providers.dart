@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -56,8 +57,15 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
     if (!_ok) return false;
     state = const AsyncLoading();
     try {
-      await SupabaseService.auth
-          .signUp(email: email.trim(), password: password);
+      // 인증 메일 링크가 Supabase "Site URL" 이 아니라 지금 열려 있는 이 앱 주소로
+      // 돌아오게 한다 — 다른 앱과 Supabase 프로젝트를 같이 쓸 때 Site URL 을 바꾸지
+      // 않아도 된다. 이 주소는 Authentication → URL Configuration → Redirect URLs 에
+      // 등록돼 있어야 한다 (없으면 Supabase 가 Site URL 로 보냄).
+      await SupabaseService.auth.signUp(
+        email: email.trim(),
+        password: password,
+        emailRedirectTo: kIsWeb ? Uri.base.removeFragment().toString() : null,
+      );
       state = const AsyncData(null);
       return true;
     } catch (e, s) {

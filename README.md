@@ -66,29 +66,24 @@ lib/
 supabase/
   migrations/0001_wines.sql · 0002_tasting_notes.sql · 0003_wine_search_cache.sql · 0004_tasting_scores_0_10.sql
   functions/wine-search/{index,openfoodfacts,cache,types}.ts
-.github/workflows/{deploy-web,build-apk,cleanup-artifacts}.yml
+.github/workflows/{deploy-web,deploy-supabase-function,build-apk,cleanup-artifacts}.yml
 web_assets/        # 웹 아이콘(파비콘·PWA·iOS) + 원본 icon.svg — CI가 web/ 에 복사
 android_assets/    # 안드로이드 런처 아이콘(mipmap-*) — APK 빌드 시 복사
 scripts/generate_icons.mjs  # icon.svg → 위 PNG 전부 생성 (아이콘 바꿀 때만 실행)
 ```
 
-## 첫 세팅 체크리스트 (직접 하셔야 하는 것)
+## 첫 세팅 (직접 하셔야 하는 것)
 
-### A. Supabase
-1. 프로젝트를 만들고 `SUPABASE_URL`과 `anon key`를 확보합니다.
-2. SQL Editor에서 `supabase/migrations/000*.sql`을 순서대로 실행합니다.
-   - 이미 0001~0003을 실행했다면 `0004_tasting_scores_0_10.sql`만 추가로 실행하면 됩니다. 실행 전에는 0~10점 노트가 서버 저장에서 거부되고, 로컬에만 남았다가 실행 후 동기화됩니다.
-   - 404 PGRST205가 나면 `NOTIFY pgrst, 'reload schema';`를 실행합니다.
-3. Edge Function `wine-search`를 배포합니다. `supabase functions deploy wine-search`로 하거나, 대시보드에 4개 파일을 붙여넣습니다.
-4. (선택) Secret `OFF_USER_AGENT`에 앱 이름과 연락처를 넣습니다. Open Food Facts가 식별 가능한 User-Agent를 요청하기 때문입니다.
+앱 주소: **https://hongsytop-tech.github.io/Wine-tasting/**
 
-### B. GitHub
-1. 저장소 Secrets에 `SUPABASE_URL`, `SUPABASE_ANON_KEY`를 등록합니다.
-2. Settings → Pages → Source를 **GitHub Actions**로 바꿉니다.
-3. `main`이나 `claude/**`에 push하면 자동 배포됩니다.
-   - 배포 주소는 `https://<owner>.github.io/<repo>/`입니다.
-4. APK가 필요하면 Actions → **Build Android APK** → Run workflow를 실행합니다. 결과는 Artifact로 내려받습니다.
-   - 서명 키를 설정하지 않으면 debug 키로 서명됩니다.
+단계별 상세 설명은 [`docs/SETUP.md`](./docs/SETUP.md)에 있습니다. 요약하면 다음과 같습니다.
+
+1. Supabase SQL Editor에서 `supabase/migrations/0001` ~ `0004`를 순서대로 실행합니다.
+2. GitHub Secrets에 `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`를 등록하고, Actions → **Deploy Supabase Function (wine-search)**를 실행합니다.
+3. Supabase Authentication → URL Configuration → Redirect URLs에 앱 주소를 추가합니다.
+4. GitHub Secrets에 `SUPABASE_URL`, `SUPABASE_ANON_KEY`를 등록합니다.
+5. Actions → **Deploy Web (GitHub Pages)**를 실행합니다.
+6. (선택) Actions → **Build Android APK**를 실행하고 Artifact에서 APK를 받습니다.
 
 ### 로컬 실행
 ```bash
