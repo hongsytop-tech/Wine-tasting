@@ -10,7 +10,7 @@ import 'update_settings_providers.dart';
 class AutoUpdater extends ConsumerWidget {
   const AutoUpdater({super.key});
 
-  static const _guardKey = 'auto_reloaded_build';
+  static const _guardKey = 'wine_auto_reloaded_build';
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
