@@ -24,7 +24,9 @@ class WineSearchService {
   Future<WineSearchResponse> search(String query) async {
     if (!SupabaseService.isReady) {
       throw const WineSearchUnavailable(
-        '검색 서버가 설정되지 않았습니다. .env 의 SUPABASE_URL / SUPABASE_ANON_KEY 를 확인하세요.',
+        '검색 서버에 연결되지 않은 빌드입니다.\n'
+        'GitHub Secrets 에 SUPABASE_URL / SUPABASE_ANON_KEY 를 등록한 뒤 '
+        'Deploy Web 을 다시 실행하세요 (docs/SETUP.md 4~5단계).',
       );
     }
     final q = query.trim();

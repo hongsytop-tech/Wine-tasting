@@ -100,6 +100,14 @@ jobs:
           # bust the 10-minute Pages cache on the entrypoint scripts
           sed -i "s/flutter_bootstrap.js/flutter_bootstrap.js?v=${SHORT_SHA}/g" build/web/index.html || true
           sed -i "s/main.dart.js/main.dart.js?v=${SHORT_SHA}/g" build/web/flutter_bootstrap.js || true
+          # 아이콘은 파일명이 Flutter 기본값과 같아서 브라우저·PWA 가 옛 아이콘을 캐시한다.
+          # 아이콘 원본(icon.svg) 해시를 붙여 아이콘이 바뀔 때만 URL 이 바뀌게 한다
+          # (매 배포마다 바꾸면 설치된 PWA 가 불필요하게 아이콘 갱신을 반복).
+          ICON_V="$(sha1sum web_assets/icon.svg | cut -c1-8)"
+          sed -i -E "s#href=\"(favicon\.png|apple-touch-icon\.png)\"#href=\"\1?v=${ICON_V}\"#g" build/web/index.html
+          sed -i -E "s#\"(icons/Icon-[a-z0-9-]+\.png)\"#\"\1?v=${ICON_V}\"#g" build/web/manifest.json
+          grep -o 'href="[^"]*png[^"]*"' build/web/index.html
+          grep -o '"icons/[^"]*"' build/web/manifest.json
 
       - name: SPA 404 fallback
         run: cp build/web/index.html build/web/404.html
