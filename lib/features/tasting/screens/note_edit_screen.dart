@@ -48,17 +48,19 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
   WineInfo _info = const WineInfo();
   String? _nameError;
 
+  /// 와인 정보 섹션 위치 (저장 시 이름이 비어 있으면 그곳으로 스크롤).
+  final _wineKey = GlobalKey();
+
   /// 이번 편집에서 새로 올린 사진 (저장 안 하고 나가면 삭제).
   final _uploaded = <String>{};
   List<String> _originalPhotos = const [];
   bool _uploading = false;
+  String? _uploadProgress;
   bool _saved = false;
 
   /// dispose 에서는 ref 를 쓸 수 없으므로 미리 잡아 둔다.
   late final LabelPhotoService _photos;
 
-  late final TextEditingController _place;
-  late final TextEditingController _companions;
   late final TextEditingController _pairing;
   late final TextEditingController _price;
   late final TextEditingController _comment;
@@ -82,8 +84,6 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
       _wine = ref.read(wineByIdProvider(n.wineId));
     }
     if (_wine != null) _info = WineInfo.fromWine(_wine!);
-    _place = TextEditingController(text: n?.place ?? '');
-    _companions = TextEditingController(text: n?.companions ?? '');
     _pairing = TextEditingController(text: n?.pairing ?? '');
     _price = TextEditingController(text: n?.price?.toString() ?? '');
     _comment = TextEditingController(text: n?.comment ?? '');
@@ -91,7 +91,7 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
 
   @override
   void dispose() {
-    for (final c in [_place, _companions, _pairing, _price, _comment]) {
+    for (final c in [_pairing, _price, _comment]) {
       c.dispose();
     }
     // 저장하지 않고 나가면 이번에 올린 사진 파일은 지운다.
@@ -139,18 +139,40 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
       });
 
   Future<void> _addPhoto(ImageSource source) async {
+    final remaining = LabelPhotoService.maxPerNote - _note!.photos.length;
+    if (remaining <= 0) {
+      _snack('사진은 노트당 ${LabelPhotoService.maxPerNote}장까지 올릴 수 있습니다');
+      return;
+    }
     setState(() => _uploading = true);
     try {
-      final path =
-          await _photos.pickAndUpload(noteId: _note!.id, source: source);
-      if (path != null) {
-        _uploaded.add(path);
-        _set((n) => n.copyWith(photos: [...n.photos, path]));
+      final r = await _photos.pickAndUpload(
+        noteId: _note!.id,
+        source: source,
+        remaining: remaining,
+        onProgress: (done, total) {
+          if (mounted) setState(() => _uploadProgress = '${done + 1}/$total');
+        },
+      );
+      _uploaded.addAll(r.paths);
+      if (r.paths.isNotEmpty) {
+        _set((n) => n.copyWith(photos: [...n.photos, ...r.paths]));
       }
+      final msgs = [
+        if (r.skipped > 0)
+          '${r.skipped}장은 노트당 ${LabelPhotoService.maxPerNote}장 제한으로 올리지 않았습니다',
+        if (r.errors.isNotEmpty) '실패 ${r.errors.length}장 — ${r.errors.first}',
+      ];
+      if (msgs.isNotEmpty) _snack(msgs.join('\n'));
     } catch (e) {
       _snack('사진 업로드 실패: $e');
     } finally {
-      if (mounted) setState(() => _uploading = false);
+      if (mounted) {
+        setState(() {
+          _uploading = false;
+          _uploadProgress = null;
+        });
+      }
     }
   }
 
@@ -161,10 +183,12 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
     if (!_info.hasName) {
       setState(() => _nameError = '와인 이름을 입력하거나 내 와인에서 고르세요');
       _snack('와인 이름이 필요합니다');
+      _scrollToWine();
       return;
     }
-    if (_info.vintageInvalid) {
-      _snack('빈티지 연도를 확인하세요');
+    if (_info.hasInvalidInput) {
+      _snack('빈티지·Vivino 평점 입력을 확인하세요');
+      _scrollToWine();
       return;
     }
     final wines = ref.read(winesProvider.notifier);
@@ -180,8 +204,6 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
 
     final n = _note!.copyWith(
       wineId: wine.id,
-      place: _place.text.trim(),
-      companions: _companions.text.trim(),
       pairing: _pairing.text.trim(),
       price: int.tryParse(_price.text.trim()),
       comment: _comment.text.trim(),
@@ -193,6 +215,16 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
         {..._originalPhotos, ..._uploaded}.difference(n.photos.toSet());
     await _photos.remove(removed);
     if (mounted) context.pop();
+  }
+
+  void _scrollToWine() {
+    final ctx = _wineKey.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 300),
+      alignment: 0.1,
+    );
   }
 
   Future<void> _delete() async {
@@ -261,105 +293,103 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
           ),
         ],
       ),
-      body: ListView(
+      // 순서: 평점 → 총평 → 색·향·맛 점수 → 와인 정보 → 라벨 사진 → 시음일·페어링·구매가
+      // 와인 정보 섹션으로 스크롤할 수 있도록 ListView(지연 생성) 대신 전부 그린다.
+      body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-        children: [
-          _wineSection(theme),
-          section('라벨 사진'),
-          PhotoStripEditor(
-            photos: n.photos,
-            enabled: SupabaseService.isSignedIn,
-            uploading: _uploading,
-            onAdd: _addPhoto,
-            onRemove: _removePhoto,
-          ),
-          section('시음 정보'),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.event),
-            title: Text(
-              DateFormat('yyyy년 M월 d일 (E)', 'ko_KR').format(n.tastedAt),
-            ),
-            trailing: const Icon(Icons.edit_calendar),
-            onTap: _pickDate,
-          ),
-          TextField(
-            controller: _place,
-            decoration: const InputDecoration(labelText: '장소', isDense: true),
-          ),
-          TextField(
-            controller: _companions,
-            decoration:
-                const InputDecoration(labelText: '함께한 사람', isDense: true),
-          ),
-          section('평점'),
-          Row(
-            children: [
-              RatingStars(
-                value: n.rating,
-                size: 36,
-                onChanged: (v) => _set((x) => x.copyWith(rating: v)),
-              ),
-              const SizedBox(width: 8),
-              Text(ratingText(n.rating), style: theme.textTheme.titleMedium),
-            ],
-          ),
-          section('외관'),
-          Wrap(
-            spacing: 6,
-            children: [
-              for (final c in TastingVocab.colorsFor(type))
-                ChoiceChip(
-                  label: Text(c),
-                  selected: n.color == c,
-                  onSelected: (_) =>
-                      _set((x) => x.copyWith(color: x.color == c ? '' : c)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            section('평점'),
+            Row(
+              children: [
+                RatingStars(
+                  value: n.rating,
+                  size: 36,
+                  onChanged: (v) => _set((x) => x.copyWith(rating: v)),
                 ),
-            ],
-          ),
-          score(TasteAttr.colorIntensity),
-          section('향 (Nose)'),
-          score(TasteAttr.aromaIntensity),
-          DescriptorPicker(
-            selected: n.aromas,
-            onChanged: (v) => _set((x) => x.copyWith(aromas: v)),
-          ),
-          section('맛 (Palate) · 0~10점'),
-          for (final a in TasteAttr.palate)
-            if (a.appliesTo(type) || a.of(n) != null) score(a),
-          const SizedBox(height: 8),
-          Text('맛에서 느낀 풍미', style: theme.textTheme.labelLarge),
-          DescriptorPicker(
-            selected: n.flavors,
-            onChanged: (v) => _set((x) => x.copyWith(flavors: v)),
-          ),
-          section('결론'),
-          TextField(
-            controller: _pairing,
-            decoration:
-                const InputDecoration(labelText: '페어링한 음식', isDense: true),
-          ),
-          TextField(
-            controller: _price,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: const InputDecoration(
-              labelText: '구매가',
-              suffixText: '원',
-              isDense: true,
+                const SizedBox(width: 8),
+                Text(ratingText(n.rating), style: theme.textTheme.titleMedium),
+              ],
             ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _comment,
-            minLines: 3,
-            maxLines: 8,
-            decoration: const InputDecoration(
-              labelText: '총평',
-              border: OutlineInputBorder(),
+            section('총평'),
+            TextField(
+              controller: _comment,
+              minLines: 3,
+              maxLines: 8,
+              decoration: const InputDecoration(
+                hintText: '이 와인에 대한 한 줄 평이나 느낌',
+                border: OutlineInputBorder(),
+              ),
             ),
-          ),
-        ],
+            section('외관'),
+            Wrap(
+              spacing: 6,
+              children: [
+                for (final c in TastingVocab.colorsFor(type))
+                  ChoiceChip(
+                    label: Text(c),
+                    selected: n.color == c,
+                    onSelected: (_) =>
+                        _set((x) => x.copyWith(color: x.color == c ? '' : c)),
+                  ),
+              ],
+            ),
+            score(TasteAttr.colorIntensity),
+            section('향 (Nose)'),
+            score(TasteAttr.aromaIntensity),
+            DescriptorPicker(
+              selected: n.aromas,
+              onChanged: (v) => _set((x) => x.copyWith(aromas: v)),
+            ),
+            section('맛 (Palate) · 0~10점'),
+            for (final a in TasteAttr.palate)
+              if (a.appliesTo(type) || a.of(n) != null) score(a),
+            const SizedBox(height: 8),
+            Text('맛에서 느낀 풍미', style: theme.textTheme.labelLarge),
+            DescriptorPicker(
+              selected: n.flavors,
+              onChanged: (v) => _set((x) => x.copyWith(flavors: v)),
+            ),
+            section('와인 정보'),
+            _wineSection(theme),
+            section('라벨 사진'),
+            PhotoStripEditor(
+              photos: n.photos,
+              enabled: SupabaseService.isSignedIn,
+              uploading: _uploading,
+              uploadProgress: _uploadProgress,
+              maxPhotos: LabelPhotoService.maxPerNote,
+              onAdd: _addPhoto,
+              onRemove: _removePhoto,
+            ),
+            section('기타'),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.event),
+              title: Text(
+                '시음일 ${DateFormat('yyyy년 M월 d일 (E)', 'ko_KR').format(n.tastedAt)}',
+              ),
+              trailing: const Icon(Icons.edit_calendar),
+              onTap: _pickDate,
+            ),
+            TextField(
+              controller: _pairing,
+              decoration:
+                  const InputDecoration(labelText: '페어링한 음식', isDense: true),
+            ),
+            TextField(
+              controller: _price,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(
+                labelText: '구매가',
+                suffixText: '원',
+                isDense: true,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -384,6 +414,7 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
       key: ValueKey(w?.id ?? 'new'),
       initial: _info,
       knownProducers: ref.watch(knownProducersProvider),
+      custom: ref.watch(customRefsProvider),
       nameError: _nameError,
       onChanged: (v) => setState(() {
         _info = v;
@@ -392,6 +423,7 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
     );
 
     return Card(
+      key: _wineKey,
       margin: const EdgeInsets.only(top: 8),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),

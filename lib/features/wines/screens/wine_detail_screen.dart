@@ -128,6 +128,33 @@ class WineDetailScreen extends ConsumerWidget {
                   style: theme.textTheme.titleMedium),
             ],
           ),
+          const SizedBox(height: 12),
+          Text('Vivino 평점', style: theme.textTheme.labelLarge),
+          if (wine.vivinoRating == null)
+            TextButton.icon(
+              style: TextButton.styleFrom(padding: EdgeInsets.zero),
+              onPressed: () => context.push(Routes.editWine(wine.id)),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('입력하기'),
+            )
+          else
+            Row(
+              children: [
+                RatingStars(value: _roundHalf(wine.vivinoRating!), size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  wine.vivinoRating!.toStringAsFixed(1),
+                  style: theme.textTheme.titleMedium,
+                ),
+                if (wine.vivinoRatedAt != null) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    '${DateFormat('yyyy.MM.dd').format(wine.vivinoRatedAt!)} 입력',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ],
+            ),
           if (wine.memo.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text('메모', style: theme.textTheme.labelLarge),
@@ -256,3 +283,7 @@ class _TastingSection extends StatelessWidget {
     );
   }
 }
+
+/// 별 표시는 0.5 단위라 Vivino 평점(소수 1자리)을 가장 가까운 0.5 로 맞춘다.
+/// 숫자는 원래 값을 그대로 보여준다.
+double _roundHalf(double v) => (v * 2).round() / 2;

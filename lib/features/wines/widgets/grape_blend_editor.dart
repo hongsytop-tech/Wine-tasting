@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/custom_refs.dart';
 import '../models/wine_reference.dart';
 import '../models/wine_type.dart';
 import 'option_picker.dart';
@@ -13,11 +14,15 @@ class GrapeBlendEditor extends StatefulWidget {
     required this.percents,
     required this.wineType,
     required this.onChanged,
+    this.customGrapes = const [],
   });
 
   final List<String> grapes;
   final Map<String, int> percents;
   final WineType wineType;
+
+  /// 전에 직접 입력한 품종 (목록 맨 위에 표시).
+  final List<String> customGrapes;
   final void Function(List<String> grapes, Map<String, int> percents) onChanged;
 
   @override
@@ -44,12 +49,17 @@ class _GrapeBlendEditorState extends State<GrapeBlendEditor> {
   /// 와인 종류에 맞는 색의 품종을 먼저 보여준다 (로제·스파클링 등은 그대로).
   List<RefItem> _options() {
     final taken = widget.grapes.toSet();
+    final custom = [
+      for (final g in widget.customGrapes)
+        if (!taken.contains(g)) CustomRefItem(g),
+    ];
     final all = WineReference.grapes.where((g) => !taken.contains(g.label));
     GrapeColor? first;
     if (widget.wineType == WineType.red) first = GrapeColor.red;
     if (widget.wineType == WineType.white) first = GrapeColor.white;
-    if (first == null) return all.toList();
+    if (first == null) return [...custom, ...all];
     return [
+      ...custom,
       ...all.where((g) => g.color == first),
       ...all.where((g) => g.color != first),
     ];

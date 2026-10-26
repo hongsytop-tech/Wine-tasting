@@ -6,6 +6,7 @@ import '../../../core/supabase/supabase_service.dart';
 import '../../../core/sync/synced_repo.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../search/models/wine_search_result.dart';
+import '../models/custom_refs.dart';
 import '../models/wine.dart';
 import '../models/wine_reference.dart';
 
@@ -53,6 +54,11 @@ final knownProducersProvider = Provider<List<String>>((ref) {
   };
   return set.toList()..sort();
 });
+
+/// 내 와인에 쓰인, 기준 목록에 없는 국가·지역·품종 (선택 시트 검색용).
+final customRefsProvider = Provider<CustomRefs>(
+  (ref) => CustomRefs.fromWines(ref.watch(visibleWinesProvider)),
+);
 
 class WinesNotifier extends StateNotifier<List<Wine>> {
   WinesNotifier(this._repo) : super(const []) {
@@ -166,6 +172,8 @@ class WinesNotifier extends StateNotifier<List<Wine>> {
       imageUrl: draft.imageUrl,
       isFavorite: draft.isFavorite,
       myRating: draft.myRating,
+      vivinoRating: draft.vivinoRating,
+      vivinoRatedAt: draft.vivinoRatedAt,
       memo: draft.memo,
       createdAt: now,
       updatedAt: now,

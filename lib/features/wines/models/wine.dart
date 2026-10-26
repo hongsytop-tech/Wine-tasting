@@ -24,6 +24,8 @@ class Wine {
     this.barcode = '',
     this.isFavorite = false,
     this.myRating,
+    this.vivinoRating,
+    this.vivinoRatedAt,
     this.memo = '',
     required this.createdAt,
     required this.updatedAt,
@@ -57,6 +59,11 @@ class Wine {
 
   /// 내 평점 0.5 ~ 5.0 (0.5 단위). null = 아직 안 매김.
   final double? myRating;
+
+  /// Vivino 평점 (0.0 ~ 5.0, 사용자가 Vivino 에서 보고 직접 입력).
+  /// 평점은 시간이 지나며 바뀌므로 입력 시점을 [vivinoRatedAt] 에 함께 둔다.
+  final double? vivinoRating;
+  final DateTime? vivinoRatedAt;
   final String memo;
 
   final DateTime createdAt;
@@ -98,6 +105,8 @@ class Wine {
       barcode: J.str(j, 'barcode'),
       isFavorite: J.boolean(j, 'isFavorite', 'is_favorite'),
       myRating: J.doubleOrNull(j, 'myRating', 'my_rating'),
+      vivinoRating: J.doubleOrNull(j, 'vivinoRating', 'vivino_rating'),
+      vivinoRatedAt: J.date(j, 'vivinoRatedAt', 'vivino_rated_at'),
       memo: J.str(j, 'memo'),
       createdAt: J.date(j, 'createdAt', 'created_at') ?? now,
       updatedAt: J.date(j, 'updatedAt', 'updated_at') ?? now,
@@ -123,6 +132,8 @@ class Wine {
         'barcode': barcode,
         'isFavorite': isFavorite,
         'myRating': myRating,
+        'vivinoRating': vivinoRating,
+        'vivinoRatedAt': J.iso(vivinoRatedAt),
         'memo': memo,
         'createdAt': J.iso(createdAt),
         'updatedAt': J.iso(updatedAt),
@@ -148,6 +159,8 @@ class Wine {
         'barcode': barcode,
         'is_favorite': isFavorite,
         'my_rating': myRating,
+        'vivino_rating': vivinoRating,
+        'vivino_rated_at': J.iso(vivinoRatedAt),
         'memo': memo,
         'created_at': J.iso(createdAt),
         'updated_at': J.iso(updatedAt),
@@ -170,6 +183,8 @@ class Wine {
     String? imageUrl,
     bool? isFavorite,
     Object? myRating = _keep,
+    Object? vivinoRating = _keep,
+    Object? vivinoRatedAt = _keep,
     String? memo,
     DateTime? updatedAt,
     Object? deletedAt = _keep,
@@ -192,6 +207,12 @@ class Wine {
         isFavorite: isFavorite ?? this.isFavorite,
         myRating:
             identical(myRating, _keep) ? this.myRating : myRating as double?,
+        vivinoRating: identical(vivinoRating, _keep)
+            ? this.vivinoRating
+            : vivinoRating as double?,
+        vivinoRatedAt: identical(vivinoRatedAt, _keep)
+            ? this.vivinoRatedAt
+            : vivinoRatedAt as DateTime?,
         memo: memo ?? this.memo,
         createdAt: createdAt,
         updatedAt: updatedAt ?? this.updatedAt,

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/custom_refs.dart';
 import '../models/wine.dart';
 import '../models/wine_reference.dart';
 import '../models/wine_type.dart';
 import 'grape_blend_editor.dart';
 import 'option_picker.dart';
 
-/// 와인 기본 정보 (이름·생산자·빈티지·종류·국가·지역·품종) 입력값.
+/// 와인 기본 정보 (이름·생산자·빈티지·종류·국가·지역·품종·Vivino 평점) 입력값.
 class WineInfo {
   const WineInfo({
     this.name = '',
@@ -18,7 +19,9 @@ class WineInfo {
     this.region = '',
     this.grapes = const [],
     this.grapePercents = const {},
+    this.vivinoRating,
     this.vintageInvalid = false,
+    this.vivinoInvalid = false,
   });
 
   factory WineInfo.fromWine(Wine w) => WineInfo(
@@ -30,6 +33,7 @@ class WineInfo {
         region: w.region,
         grapes: w.grapes,
         grapePercents: w.grapePercents,
+        vivinoRating: w.vivinoRating,
       );
 
   final String name;
@@ -40,14 +44,25 @@ class WineInfo {
   final String region;
   final List<String> grapes;
   final Map<String, int> grapePercents;
+  final double? vivinoRating;
 
   /// 빈티지 칸에 잘못된 연도가 입력돼 있음 (저장 막기용, 저장되지 않는 값).
   final bool vintageInvalid;
 
+  /// Vivino 평점 칸에 잘못된 값이 입력돼 있음 (저장 막기용).
+  final bool vivinoInvalid;
+
+  bool get hasInvalidInput => vintageInvalid || vivinoInvalid;
+
   bool get hasName => name.trim().isNotEmpty;
 
   /// [w] 에 이 입력값을 덮어쓴 사본 (나머지 필드는 유지).
+  /// Vivino 평점이 바뀌면 입력 시점을 지금으로 기록한다.
   Wine applyTo(Wine w) => w.copyWith(
+        vivinoRating: vivinoRating,
+        vivinoRatedAt: vivinoRating == w.vivinoRating
+            ? w.vivinoRatedAt
+            : (vivinoRating == null ? null : DateTime.now()),
         name: name.trim(),
         producer: producer.trim(),
         vintage: vintage,
@@ -68,6 +83,7 @@ class WineInfo {
         a.country != w.country ||
         a.region != w.region ||
         a.grapes.join('\u0000') != w.grapes.join('\u0000') ||
+        a.vivinoRating != w.vivinoRating ||
         !_sameMap(a.grapePercents, w.grapePercents);
   }
 
@@ -83,7 +99,9 @@ class WineInfo {
     String? region,
     List<String>? grapes,
     Map<String, int>? grapePercents,
+    Object? vivinoRating = _keep,
     bool? vintageInvalid,
+    bool? vivinoInvalid,
   }) =>
       WineInfo(
         name: name ?? this.name,
@@ -94,7 +112,11 @@ class WineInfo {
         region: region ?? this.region,
         grapes: grapes ?? this.grapes,
         grapePercents: grapePercents ?? this.grapePercents,
+        vivinoRating: identical(vivinoRating, _keep)
+            ? this.vivinoRating
+            : vivinoRating as double?,
         vintageInvalid: vintageInvalid ?? this.vintageInvalid,
+        vivinoInvalid: vivinoInvalid ?? this.vivinoInvalid,
       );
 
   static const _keep = Object();
@@ -108,6 +130,16 @@ class WineInfo {
     if (y == null || y < 1800 || y > max) return '1800 ~ $max 사이 연도';
     return null;
   }
+
+  /// Vivino 평점 입력 해석: 빈칸 = null, "3.8"·"3,8" 허용, 0~5 범위·소수 1자리.
+  /// 반환: (값, 오류문구).
+  static (double?, String?) parseVivino(String text) {
+    final s = text.trim().replaceAll(',', '.');
+    if (s.isEmpty) return (null, null);
+    final v = double.tryParse(s);
+    if (v == null || v < 0 || v > 5) return (null, '0.0 ~ 5.0');
+    return ((v * 10).round() / 10, null);
+  }
 }
 
 /// 와인 정보 입력 폼. 국가·지역·품종은 목록에서 고르거나 직접 입력,
@@ -118,12 +150,16 @@ class WineInfoForm extends StatefulWidget {
     required this.initial,
     required this.onChanged,
     this.knownProducers = const [],
+    this.custom = const CustomRefs(),
     this.nameError,
   });
 
   final WineInfo initial;
   final ValueChanged<WineInfo> onChanged;
   final List<String> knownProducers;
+
+  /// 내가 전에 직접 입력한 국가·지역·품종 (선택 시트에 함께 보여줌).
+  final CustomRefs custom;
 
   /// 저장 시도 후 이름이 비어 있으면 부모가 넘겨주는 오류 문구.
   final String? nameError;
@@ -138,14 +174,18 @@ class _WineInfoFormState extends State<WineInfoForm> {
   late final _producer = TextEditingController(text: _v.producer);
   late final _vintage =
       TextEditingController(text: _v.vintage?.toString() ?? '');
+  late final _vivino =
+      TextEditingController(text: _v.vivinoRating?.toStringAsFixed(1) ?? '');
   final _producerFocus = FocusNode();
   String? _vintageError;
+  String? _vivinoError;
 
   @override
   void dispose() {
     _name.dispose();
     _producer.dispose();
     _vintage.dispose();
+    _vivino.dispose();
     _producerFocus.dispose();
     super.dispose();
   }
@@ -159,22 +199,25 @@ class _WineInfoFormState extends State<WineInfoForm> {
     final r = await showOptionPicker(
       context,
       title: '국가',
-      options: WineReference.countries,
+      options: [...widget.custom.countryItems, ...WineReference.countries],
       current: _v.country,
     );
     if (r == null) return;
     final c = WineReference.canonicalCountry(r);
-    // 국가가 바뀌면 그 나라 산지가 아닌 지역은 비운다.
-    final keepRegion = _v.region.isEmpty ||
-        WineReference.countryOfRegion(_v.region) == null ||
-        WineReference.countryOfRegion(_v.region) == c;
+    // 국가가 바뀌면 다른 나라의 산지로 알려진 지역은 비운다.
+    final regionCountry = _countryOfRegion(_v.region);
+    final keepRegion =
+        _v.region.isEmpty || regionCountry == null || regionCountry == c;
     _emit(_v.copyWith(country: c, region: keepRegion ? _v.region : ''));
   }
 
   Future<void> _pickRegion() async {
-    final options = _v.country.isEmpty
-        ? WineReference.allRegions
-        : WineReference.regionsFor(_v.country);
+    final options = [
+      ...widget.custom.regionItemsFor(_v.country),
+      ...(_v.country.isEmpty
+          ? WineReference.allRegions
+          : WineReference.regionsFor(_v.country)),
+    ];
     final r = await showOptionPicker(
       context,
       title: _v.country.isEmpty ? '지역' : '지역 (${_v.country})',
@@ -184,11 +227,17 @@ class _WineInfoFormState extends State<WineInfoForm> {
     );
     if (r == null) return;
     final region = WineReference.canonicalRegion(r);
-    // 목록의 산지를 고르면 국가가 비어 있을 때 자동으로 채운다.
-    final country = _v.country.isEmpty
-        ? (WineReference.countryOfRegion(region) ?? '')
-        : _v.country;
+    // 알려진 산지(기준 목록 또는 전에 국가와 함께 입력한 지역)를 고르면
+    // 국가가 비어 있을 때 자동으로 채운다.
+    final country =
+        _v.country.isEmpty ? (_countryOfRegion(region) ?? '') : _v.country;
     _emit(_v.copyWith(region: region, country: country));
+  }
+
+  String? _countryOfRegion(String region) {
+    if (region.trim().isEmpty) return null;
+    return WineReference.countryOfRegion(region) ??
+        widget.custom.countryOfRegion(region);
   }
 
   @override
@@ -314,7 +363,33 @@ class _WineInfoFormState extends State<WineInfoForm> {
           grapes: _v.grapes,
           percents: _v.grapePercents,
           wineType: _v.type,
+          customGrapes: widget.custom.grapes,
           onChanged: (g, p) => _emit(_v.copyWith(grapes: g, grapePercents: p)),
+        ),
+        gap,
+        TextField(
+          controller: _vivino,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+            LengthLimitingTextInputFormatter(3),
+          ],
+          decoration: InputDecoration(
+            labelText: 'Vivino 평점',
+            hintText: '예: 3.8',
+            helperText: 'Vivino 에서 본 평점을 직접 입력 (0.0 ~ 5.0)',
+            border: const OutlineInputBorder(),
+            errorText: _vivinoError,
+            suffixIcon: const Icon(Icons.star_rate_rounded),
+          ),
+          onChanged: (t) {
+            final (v, err) = WineInfo.parseVivino(t);
+            _vivinoError = err;
+            _emit(_v.copyWith(
+              vivinoRating: err == null ? v : _v.vivinoRating,
+              vivinoInvalid: err != null,
+            ));
+          },
         ),
       ],
     );

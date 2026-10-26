@@ -54,6 +54,13 @@ class WineTile extends StatelessWidget {
               RatingStars(value: wine.myRating, size: 16),
               const SizedBox(width: 6),
               Text(ratingText(wine.myRating), style: theme.textTheme.bodySmall),
+              if (wine.vivinoRating != null) ...[
+                const SizedBox(width: 10),
+                Text(
+                  'Vivino ${wine.vivinoRating!.toStringAsFixed(1)}',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
             ],
           ),
           if (tastedLine != null)

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/custom_refs.dart';
 import '../models/wine_reference.dart';
 
 /// 검색 가능한 선택 시트. 목록에 없으면 입력한 글자 그대로 "직접 입력" 할 수 있다.
@@ -123,8 +124,11 @@ class _OptionPickerSheetState extends State<_OptionPickerSheet> {
                     ListTile(
                       dense: true,
                       title: Text(o.label),
-                      subtitle:
-                          o.aliases.isEmpty ? null : Text(o.aliases.join(', ')),
+                      subtitle: o is CustomRefItem
+                          ? const Text('내가 직접 입력했던 값')
+                          : (o.aliases.isEmpty
+                              ? null
+                              : Text(o.aliases.join(', '))),
                       trailing: o.label == widget.current
                           ? Icon(Icons.check, color: theme.colorScheme.primary)
                           : null,

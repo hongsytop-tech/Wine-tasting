@@ -22,21 +22,25 @@
     - 지역은 선택한 국가의 주요 산지만 보여줍니다. 산지를 먼저 고르면 국가가 자동으로 채워집니다.
     - 기준 목록: `lib/features/wines/models/wine_reference.dart`
   - 생산자는 내 와인에 이미 있는 이름을 자동완성으로 제안합니다.
+  - **직접 입력한 값 재사용:** 목록에 없어 직접 입력한 국가·지역·품종(예: California)은 다음 와인 입력 때 검색 목록에 "내가 직접 입력했던 값"으로 나옵니다.
+    - 따로 저장하지 않고 내 와인들에서 계산합니다. 그래서 기기 간에 함께 동기화되고, 그 값을 쓰는 와인을 모두 지우면 목록에서도 빠집니다.
+    - 직접 입력한 지역은 함께 입력했던 국가를 기억해서, 그 지역을 고르면 국가가 자동으로 채워집니다.
+  - **Vivino 평점:** Vivino에서 본 평점(0.0~5.0)을 직접 입력합니다. 평점이 바뀔 수 있어 입력한 날짜를 함께 저장합니다.
+    - Vivino 페이지에서 자동으로 가져오지는 않습니다(Vivino 약관이 자동 수집을 금지).
   - **블렌드**: 품종을 여러 개 넣고, 알면 비율(%)도 입력합니다. 합계가 100%가 아니면 경고합니다.
   - 검색 결과의 원산지 텍스트(예: "Bordeaux, France")는 목록과 정확히 일치할 때만 국가·지역으로 나눕니다.
 - **테이스팅 노트 = 마신 기록 1회**: WSET 체계적 시음법을 단순화한 구조
-  - 맨 위 **와인 정보**: 내 와인에서 고르거나 새 와인을 입력합니다. 여기서 고친 정보는 와인에도 반영됩니다.
-  - **라벨 사진**: 카메라나 앨범에서 올립니다(로그인 필요). Supabase Storage 비공개 버킷에 저장되고, 본인만 볼 수 있습니다.
+  - 화면 순서: **평점 → 총평 → 외관(색)·향·맛 점수** → 와인 정보 → 라벨 사진 → 시음일·페어링·구매가
+  - **와인 정보**: 내 와인에서 고르거나 새 와인을 입력합니다. 여기서 고친 정보는 와인에도 반영됩니다. 와인 이름 없이 저장하면 이 칸으로 이동합니다.
+  - **라벨 사진**: 카메라(1장)나 앨범(**여러 장 한 번에 선택**)에서 올립니다. 노트당 최대 10장이며 로그인이 필요합니다. Supabase Storage 비공개 버킷에 저장되고, 본인만 볼 수 있습니다.
     - 사진은 긴 변 1600px로 줄여 올립니다.
     - 저장하지 않고 나가거나 사진을 빼거나 노트를 지우면 파일도 삭제합니다.
-  - 날짜·장소·동석자, 이번 시음 평점
   - **특징 점수 0~10** (슬라이더, ✕로 "기록 안 함")
     - 외관: 색(옅음↔진함). 색상 이름(루비·가넷 등)은 별도 선택
     - 향: 향 강도(약함↔강함)
     - 맛: 당도(드라이↔스위트), 산미, 타닌, 알코올, 바디, 여운
     - 타닌 입력은 화이트·스파클링에서 숨깁니다.
   - 향·맛 묘사어: 12개 그룹 프리셋에서 고르거나 직접 입력
-  - 결론: 페어링, 구매가, 총평
 - 노트가 1개 이상 있는 와인이 "마신 와인"입니다. 따로 상태 값을 두지 않고 노트에서 계산합니다.
 
 ## 와인 데이터 출처
@@ -76,7 +80,7 @@ lib/
   features/{auth,wines,search,tasting,settings,update}/{models,services,providers,screens,widgets}
   shell/app_shell.dart · app.dart · main.dart
 supabase/
-  migrations/0001 ~ 0005 (wines · tasting_notes · 검색 캐시 · 0~10점 · 블렌드·라벨 사진)
+  migrations/0001 ~ 0006 (wines · tasting_notes · 검색 캐시 · 0~10점 · 블렌드·라벨 사진 · Vivino 평점)
   functions/wine-search/{index,openfoodfacts,cache,types}.ts
 .github/workflows/{deploy-web,deploy-supabase-function,build-apk,cleanup-artifacts}.yml
 web_assets/        # 웹 아이콘(파비콘·PWA·iOS) + 원본 icon.svg — CI가 web/ 에 복사
@@ -90,7 +94,7 @@ scripts/generate_icons.mjs  # icon.svg → 위 PNG 전부 생성 (아이콘 바�
 
 단계별 상세 설명은 [`docs/SETUP.md`](./docs/SETUP.md)에 있습니다. 요약하면 다음과 같습니다.
 
-1. Supabase SQL Editor에서 `supabase/migrations/0001` ~ `0005`를 순서대로 실행합니다.
+1. Supabase SQL Editor에서 `supabase/migrations/0001` ~ `0006`을 순서대로 실행합니다.
 2. GitHub Secrets에 `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`를 등록하고, Actions → **Deploy Supabase Function (wine-search)**를 실행합니다.
 3. Supabase Authentication → URL Configuration → Redirect URLs에 앱 주소를 추가합니다.
 4. GitHub Secrets에 `SUPABASE_URL`, `SUPABASE_ANON_KEY`를 등록합니다.

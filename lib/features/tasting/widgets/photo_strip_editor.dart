@@ -12,6 +12,8 @@ class PhotoStripEditor extends StatelessWidget {
     required this.onRemove,
     required this.enabled,
     this.uploading = false,
+    this.uploadProgress,
+    this.maxPhotos = 10,
   });
 
   final List<String> photos;
@@ -21,6 +23,10 @@ class PhotoStripEditor extends StatelessWidget {
   /// false 면 (로그인 안 됨) 추가 버튼 대신 안내 문구.
   final bool enabled;
   final bool uploading;
+
+  /// "2/5" 처럼 업로드 진행 상황.
+  final String? uploadProgress;
+  final int maxPhotos;
 
   static const _size = 96.0;
 
@@ -38,7 +44,7 @@ class PhotoStripEditor extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('앨범에서 고르기'),
+              title: const Text('앨범에서 고르기 (여러 장 선택 가능)'),
               onTap: () => Navigator.pop(ctx, ImageSource.gallery),
             ),
           ],
@@ -85,34 +91,47 @@ class PhotoStripEditor extends StatelessWidget {
                 ],
               ),
             ),
-          InkWell(
-            onTap: uploading ? null : () => _chooseSource(context),
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              width: _size,
-              height: _size,
-              decoration: BoxDecoration(
-                border: Border.all(color: Theme.of(context).dividerColor),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: uploading
-                  ? const Center(
-                      child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+          if (photos.length < maxPhotos || uploading)
+            InkWell(
+              onTap: uploading ? null : () => _chooseSource(context),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                width: _size,
+                height: _size,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Theme.of(context).dividerColor),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: uploading
+                    ? Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          if (uploadProgress != null) ...[
+                            const SizedBox(height: 6),
+                            Text(uploadProgress!,
+                                style: const TextStyle(fontSize: 12)),
+                          ],
+                        ],
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.add_a_photo_outlined),
+                          const SizedBox(height: 4),
+                          Text(
+                            '라벨 사진\n${photos.length}/$maxPhotos',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ],
                       ),
-                    )
-                  : const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.add_a_photo_outlined),
-                        SizedBox(height: 4),
-                        Text('라벨 사진', style: TextStyle(fontSize: 12)),
-                      ],
-                    ),
+              ),
             ),
-          ),
         ],
       ),
     );

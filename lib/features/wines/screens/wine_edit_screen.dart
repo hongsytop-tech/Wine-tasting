@@ -48,7 +48,7 @@ class _WineEditScreenState extends ConsumerState<WineEditScreen> {
       setState(() => _nameError = '이름을 입력하세요');
       return;
     }
-    if (_info.vintageInvalid) return;
+    if (_info.hasInvalidInput) return;
     final notifier = ref.read(winesProvider.notifier);
     final original = _original;
     if (original == null) {
@@ -80,6 +80,7 @@ class _WineEditScreenState extends ConsumerState<WineEditScreen> {
           WineInfoForm(
             initial: _info,
             knownProducers: ref.watch(knownProducersProvider),
+            custom: ref.watch(customRefsProvider),
             nameError: _nameError,
             onChanged: (v) => setState(() {
               _info = v;
