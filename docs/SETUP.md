@@ -37,11 +37,16 @@
    | 2 | [0002_tasting_notes.sql](https://github.com/hongsytop-tech/Wine-tasting/blob/claude/practical-dijkstra-i4je7l/supabase/migrations/0002_tasting_notes.sql) | 테이스팅 노트 테이블 |
    | 3 | [0003_wine_search_cache.sql](https://github.com/hongsytop-tech/Wine-tasting/blob/claude/practical-dijkstra-i4je7l/supabase/migrations/0003_wine_search_cache.sql) | 검색 결과 캐시 |
    | 4 | [0004_tasting_scores_0_10.sql](https://github.com/hongsytop-tech/Wine-tasting/blob/claude/practical-dijkstra-i4je7l/supabase/migrations/0004_tasting_scores_0_10.sql) | 특징 점수 0~10 척도 |
+   | 5 | [0005_blend_and_label_photos.sql](https://github.com/hongsytop-tech/Wine-tasting/blob/claude/practical-dijkstra-i4je7l/supabase/migrations/0005_blend_and_label_photos.sql) | 블렌드 비율, 라벨 사진 저장소(비공개 버킷 `wine-labels`) |
 
 3. 각 실행 결과에 **Success. No rows returned**가 나오면 정상입니다.
    - `NOTICE ... does not exist, skipping` 같은 안내 문구가 같이 나와도 정상입니다.
    - 같은 파일을 두 번 실행해도 안전합니다.
-4. 왼쪽 **Table Editor**에서 `wines`, `tasting_notes`, `wine_search_cache` 세 테이블이 보이면 끝입니다.
+4. 왼쪽 **Table Editor**에서 `wines`, `tasting_notes`, `wine_search_cache` 세 테이블이 보이면 됩니다.
+   - 0005까지 실행했다면 **Storage**에 `wine-labels` 버킷도 보여야 합니다.
+5. 0001~0004를 이미 실행했다면 **0005만 추가로 실행**하면 됩니다.
+   - 실행 전에는 블렌드 비율이나 라벨 사진이 들어간 와인·노트를 서버에 저장하지 못합니다. 기기에는 남아 있다가, 실행 후 동기화될 때 올라갑니다.
+   - 마이 탭 → **지금 동기화**를 누르면 실패한 경우 그 이유가 표시됩니다.
 
 ---
 
@@ -147,4 +152,6 @@ GitHub Actions로 배포합니다. PC에 아무것도 설치하지 않아도 됩
 | 검색 시 401 / Invalid JWT | anon 키 형식 문제 | 4단계에서 `eyJ...` 키 사용 |
 | 와인·노트가 서버에 안 올라감, `PGRST205` | 테이블 없음 또는 스키마 캐시 | 1단계 확인 후 SQL Editor에서 `NOTIFY pgrst, 'reload schema';` 실행 |
 | 0~10점 노트만 동기화 안 됨 | 0004 미실행 | 1단계 4번 파일 실행 |
+| 라벨 사진 업로드 실패 (`Bucket not found` 등) | 0005 미실행 | 1단계 5번 파일 실행 |
+| "지금 동기화" 시 `grape_percents`·`photos` 컬럼 오류 | 0005 미실행 | 1단계 5번 파일 실행 |
 | Actions "Deploy Supabase Function" 실패 | Secret 누락 또는 토큰 만료 | 로그의 `::error::` 메시지 확인, 2-1·2-3 다시 하기 |

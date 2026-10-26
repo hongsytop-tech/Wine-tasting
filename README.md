@@ -11,13 +11,24 @@
 |---|---|
 | 내 와인 | 저장한 와인 목록, **전체 / 즐겨찾기 / 마신 와인** 필터, 최근 수정·최근 시음·평점·이름 정렬, 직접 추가 |
 | 검색 | 와인 이름 또는 바코드(EAN/UPC)로 검색 → **마셨어요 · 평가 남기기** / 내 와인에 추가 / 즐겨찾기 |
-| 노트 | 전체 테이스팅 노트 (시음일 최신순) |
+| 노트 | 전체 테이스팅 노트 — 검색, **국가·지역·생산자·빈티지·품종·종류 필터**(다중 선택), **기준별 모아보기**, 와인을 정하지 않고 **새 노트** 시작 |
 | 마이 | 계정, 지금 동기화, 로그아웃, 웹 자동 업데이트 |
 
 - **와인 상세**: 정보, 내 평점(0.5 단위 별점), 즐겨찾기, 메모, 원본 출처 링크
   - **마신 기록**: 마신 횟수, 마지막 시음일, 노트 평균 평점
   - **특징 프로필**: 0~10점 막대 그래프. 노트가 여러 개면 기록된 값의 평균입니다.
+- **와인 정보 입력**: 와인 추가·수정 화면과 테이스팅 노트 화면에서 같은 폼을 씁니다.
+  - 국가·지역·품종은 목록에서 고릅니다. 한글이나 영문으로 검색할 수 있고, 목록에 없으면 직접 입력합니다.
+    - 지역은 선택한 국가의 주요 산지만 보여줍니다. 산지를 먼저 고르면 국가가 자동으로 채워집니다.
+    - 기준 목록: `lib/features/wines/models/wine_reference.dart`
+  - 생산자는 내 와인에 이미 있는 이름을 자동완성으로 제안합니다.
+  - **블렌드**: 품종을 여러 개 넣고, 알면 비율(%)도 입력합니다. 합계가 100%가 아니면 경고합니다.
+  - 검색 결과의 원산지 텍스트(예: "Bordeaux, France")는 목록과 정확히 일치할 때만 국가·지역으로 나눕니다.
 - **테이스팅 노트 = 마신 기록 1회**: WSET 체계적 시음법을 단순화한 구조
+  - 맨 위 **와인 정보**: 내 와인에서 고르거나 새 와인을 입력합니다. 여기서 고친 정보는 와인에도 반영됩니다.
+  - **라벨 사진**: 카메라나 앨범에서 올립니다(로그인 필요). Supabase Storage 비공개 버킷에 저장되고, 본인만 볼 수 있습니다.
+    - 사진은 긴 변 1600px로 줄여 올립니다.
+    - 저장하지 않고 나가거나 사진을 빼거나 노트를 지우면 파일도 삭제합니다.
   - 날짜·장소·동석자, 이번 시음 평점
   - **특징 점수 0~10** (슬라이더, ✕로 "기록 안 함")
     - 외관: 색(옅음↔진함). 색상 이름(루비·가넷 등)은 별도 선택
@@ -56,6 +67,7 @@
 |---|---|---|
 | `Wine` (셀러·즐겨찾기·내 평점) | 행 단위 `(user_id, id)` | `wines` |
 | `TastingNote` | 행 단위 `(user_id, id)` | `tasting_notes` |
+| 라벨 사진 | 비공개 버킷, `<user_id>/<note_id>/<uuid>.jpg` | Storage `wine-labels` |
 | 검색 결과 캐시 (7일) | service_role 전용 | `wine_search_cache` |
 
 ```
@@ -64,7 +76,7 @@ lib/
   features/{auth,wines,search,tasting,settings,update}/{models,services,providers,screens,widgets}
   shell/app_shell.dart · app.dart · main.dart
 supabase/
-  migrations/0001_wines.sql · 0002_tasting_notes.sql · 0003_wine_search_cache.sql · 0004_tasting_scores_0_10.sql
+  migrations/0001 ~ 0005 (wines · tasting_notes · 검색 캐시 · 0~10점 · 블렌드·라벨 사진)
   functions/wine-search/{index,openfoodfacts,cache,types}.ts
 .github/workflows/{deploy-web,deploy-supabase-function,build-apk,cleanup-artifacts}.yml
 web_assets/        # 웹 아이콘(파비콘·PWA·iOS) + 원본 icon.svg — CI가 web/ 에 복사
@@ -78,7 +90,7 @@ scripts/generate_icons.mjs  # icon.svg → 위 PNG 전부 생성 (아이콘 바�
 
 단계별 상세 설명은 [`docs/SETUP.md`](./docs/SETUP.md)에 있습니다. 요약하면 다음과 같습니다.
 
-1. Supabase SQL Editor에서 `supabase/migrations/0001` ~ `0004`를 순서대로 실행합니다.
+1. Supabase SQL Editor에서 `supabase/migrations/0001` ~ `0005`를 순서대로 실행합니다.
 2. GitHub Secrets에 `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`를 등록하고, Actions → **Deploy Supabase Function (wine-search)**를 실행합니다.
 3. Supabase Authentication → URL Configuration → Redirect URLs에 앱 주소를 추가합니다.
 4. GitHub Secrets에 `SUPABASE_URL`, `SUPABASE_ANON_KEY`를 등록합니다.
@@ -104,6 +116,6 @@ deno test supabase/functions/wine-search/              # Open Food Facts 매핑
 
 - [ ] LWIN DB(무료)를 Postgres에 적재해 이름 검색 보강 (라이선스 버전 확인 후)
 - [ ] Wine-Searcher API 계약 시 `WineSource` 추가 (평론가 점수·가격)
-- [ ] 라벨 사진 → Claude 비전으로 텍스트 추출 → 검색어 자동 입력
+- [ ] 올린 라벨 사진 → Claude 비전으로 이름·빈티지 추출해 와인 정보 자동 입력
 - [ ] 바코드 카메라 스캔 (`mobile_scanner`)
 - [ ] 통계: 종류별/국가별 분포, 평점 추이, 마신 와인들의 특징 비교(레이더 차트)

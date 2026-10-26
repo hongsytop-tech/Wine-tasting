@@ -25,6 +25,9 @@ class Routes {
   static String editWine(String id) => '/wine/$id/edit';
   static String newNote(String wineId) => '/wine/$wineId/note/new';
   static String note(String noteId) => '/note/$noteId';
+
+  /// 와인을 정하지 않고 시작하는 새 노트 (노트 탭).
+  static const freshNote = '/note/new';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -94,6 +97,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 NoteEditScreen(wineId: state.pathParameters['id']),
           ),
         ],
+      ),
+      // `/note/new` 는 `/note/:noteId` 보다 앞에 둔다.
+      GoRoute(
+        path: Routes.freshNote,
+        builder: (_, __) => const NoteEditScreen(),
       ),
       GoRoute(
         path: '/note/:noteId',

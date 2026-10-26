@@ -30,6 +30,7 @@ class TastingNote {
     this.pairing = '',
     this.price,
     this.comment = '',
+    this.photos = const [],
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -67,6 +68,9 @@ class TastingNote {
   /// 구매가 (원). null = 미기록.
   final int? price;
   final String comment;
+
+  /// 라벨 사진 — Supabase Storage(wine-labels 버킷) 안의 경로 목록.
+  final List<String> photos;
 
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -121,6 +125,7 @@ class TastingNote {
       pairing: J.str(j, 'pairing'),
       price: J.intOrNull(j, 'price'),
       comment: J.str(j, 'comment'),
+      photos: J.strList(j, 'photos'),
       createdAt: J.date(j, 'createdAt', 'created_at') ?? now,
       updatedAt: J.date(j, 'updatedAt', 'updated_at') ?? now,
       deletedAt: J.date(j, 'deletedAt', 'deleted_at'),
@@ -150,6 +155,7 @@ class TastingNote {
         'pairing': pairing,
         'price': price,
         'comment': comment,
+        'photos': photos,
         'createdAt': J.iso(createdAt),
         'updatedAt': J.iso(updatedAt),
         'deletedAt': J.iso(deletedAt),
@@ -179,6 +185,7 @@ class TastingNote {
         'pairing': pairing,
         'price': price,
         'comment': comment,
+        'photos': photos,
         'created_at': J.iso(createdAt),
         'updated_at': J.iso(updatedAt),
         'deleted_at': J.iso(deletedAt),
@@ -209,6 +216,7 @@ class TastingNote {
   static const _keep = Object();
 
   TastingNote copyWith({
+    String? wineId,
     DateTime? tastedAt,
     String? place,
     String? companions,
@@ -227,6 +235,7 @@ class TastingNote {
     String? pairing,
     Object? price = _keep,
     String? comment,
+    List<String>? photos,
     DateTime? updatedAt,
     Object? deletedAt = _keep,
   }) {
@@ -234,7 +243,7 @@ class TastingNote {
         identical(v, _keep) ? current : v as T?;
     return TastingNote(
       id: id,
-      wineId: wineId,
+      wineId: wineId ?? this.wineId,
       tastedAt: tastedAt ?? this.tastedAt,
       place: place ?? this.place,
       companions: companions ?? this.companions,
@@ -253,6 +262,7 @@ class TastingNote {
       pairing: pairing ?? this.pairing,
       price: pick<int>(price, this.price),
       comment: comment ?? this.comment,
+      photos: photos ?? this.photos,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: pick<DateTime>(deletedAt, this.deletedAt),

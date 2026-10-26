@@ -9,11 +9,12 @@ import '../../search/models/wine_search_result.dart';
 import '../../tasting/models/taste_attr.dart';
 import '../../tasting/models/tasting_note.dart';
 import '../../tasting/providers/tasting_providers.dart';
+import '../../tasting/widgets/label_photo.dart';
 import '../../tasting/widgets/taste_profile_view.dart';
 import '../models/wine.dart';
 import '../providers/wines_providers.dart';
 import '../widgets/rating_stars.dart';
-import '../widgets/wine_thumb.dart';
+import '../widgets/wine_avatar.dart';
 
 class WineDetailScreen extends ConsumerWidget {
   const WineDetailScreen({super.key, required this.wineId});
@@ -90,7 +91,7 @@ class WineDetailScreen extends ConsumerWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              WineThumb(imageUrl: wine.imageUrl, type: wine.type, size: 96),
+              WineAvatar(wine: wine, size: 96),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
@@ -102,7 +103,12 @@ class WineDetailScreen extends ConsumerWidget {
                     const SizedBox(height: 4),
                     Text('${wine.vintageLabel} · ${wine.type.label}'),
                     if (wine.originLabel.isNotEmpty) Text(wine.originLabel),
-                    if (wine.grapes.isNotEmpty) Text(wine.grapes.join(', ')),
+                    if (wine.grapes.isNotEmpty)
+                      Text(
+                        wine.isBlend
+                            ? '블렌드: ${wine.grapesLabel}'
+                            : wine.grapesLabel,
+                      ),
                   ],
                 ),
               ),
@@ -195,6 +201,9 @@ class _NoteTile extends StatelessWidget {
       margin: const EdgeInsets.only(top: 8),
       child: ListTile(
         onTap: () => context.push(Routes.note(note.id)),
+        leading: note.photos.isEmpty
+            ? null
+            : LabelPhoto(path: note.photos.first, size: 48),
         title: Row(
           children: [
             Expanded(child: Text(date)),

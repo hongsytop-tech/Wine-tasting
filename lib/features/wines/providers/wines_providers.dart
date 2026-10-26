@@ -7,6 +7,7 @@ import '../../../core/sync/synced_repo.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../search/models/wine_search_result.dart';
 import '../models/wine.dart';
+import '../models/wine_reference.dart';
 
 const _uuid = Uuid();
 
@@ -44,6 +45,15 @@ final wineByIdProvider = Provider.family<Wine?, String>((ref, id) {
   return null;
 });
 
+/// 내 와인에 있는 생산자 목록 (자동완성용, 가나다/ABC 순).
+final knownProducersProvider = Provider<List<String>>((ref) {
+  final set = <String>{
+    for (final w in ref.watch(visibleWinesProvider))
+      if (w.producer.trim().isNotEmpty) w.producer.trim(),
+  };
+  return set.toList()..sort();
+});
+
 class WinesNotifier extends StateNotifier<List<Wine>> {
   WinesNotifier(this._repo) : super(const []) {
     _init();
@@ -58,9 +68,10 @@ class WinesNotifier extends StateNotifier<List<Wine>> {
 
   /// 로컬 ↔ 서버 병합 (최신 updatedAt 우선). 로그아웃 상태면 no-op.
   /// 다른 계정의 캐시가 남아 있으면 병합하지 않고 버린다.
-  Future<void> sync() async {
+  /// 반환: 실패 사유 (성공·로그아웃 상태면 null).
+  Future<String?> sync() async {
     final user = SupabaseService.currentUser;
-    if (user == null) return;
+    if (user == null) return null;
     if (_repo.isForeignCache(user.id)) {
       state = const [];
       await _repo.clearLocal();
@@ -68,8 +79,10 @@ class WinesNotifier extends StateNotifier<List<Wine>> {
     try {
       final merged = await _repo.pullAndMerge(state);
       if (merged != null) state = merged;
-    } catch (_) {
+      return null;
+    } catch (e) {
       // keep local on sync failure; retried on next launch/login
+      return '$e';
     }
   }
 
@@ -114,15 +127,16 @@ class WinesNotifier extends StateNotifier<List<Wine>> {
       return existing;
     }
     final now = DateTime.now();
+    final origin = WineReference.parseOrigin(r.country, r.region);
     final w = Wine(
       id: _uuid.v4(),
       name: r.name,
       producer: r.producer,
       vintage: r.vintage,
       type: r.type,
-      country: r.country,
-      region: r.region,
-      grapes: r.grapes,
+      country: origin.country,
+      region: origin.region,
+      grapes: [for (final g in r.grapes) WineReference.canonicalGrape(g)],
       imageUrl: r.imageUrl,
       source: r.source,
       sourceId: r.sourceId,
@@ -148,6 +162,7 @@ class WinesNotifier extends StateNotifier<List<Wine>> {
       country: draft.country,
       region: draft.region,
       grapes: draft.grapes,
+      grapePercents: draft.grapePercents,
       imageUrl: draft.imageUrl,
       isFavorite: draft.isFavorite,
       myRating: draft.myRating,

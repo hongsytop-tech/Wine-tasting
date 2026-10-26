@@ -67,4 +67,39 @@ void main() {
     expect(cleared.rating, isNull);
     expect(cleared.acidity, 4);
   });
+
+  test('blend percents and label photos survive both JSON forms', () {
+    final w = wine().copyWith(
+      grapes: ['메를로', '카베르네 프랑'],
+      grapePercents: {'메를로': 70, '카베르네 프랑': 30},
+    );
+    expect(Wine.fromJson(w.toJson()).grapePercents, {'메를로': 70, '카베르네 프랑': 30});
+    expect(
+        Wine.fromJson(w.toRow('u1')).grapePercents, {'메를로': 70, '카베르네 프랑': 30});
+    expect(w.isBlend, isTrue);
+    expect(w.grapesLabel, '메를로 70% · 카베르네 프랑 30%');
+
+    final n = TastingNote(
+      id: 'n1',
+      wineId: 'w1',
+      tastedAt: t,
+      photos: const ['u1/n1/a.jpg'],
+      createdAt: t,
+      updatedAt: t,
+    );
+    expect(TastingNote.fromJson(n.toRow('u1')).photos, ['u1/n1/a.jpg']);
+    expect(n.copyWith(wineId: 'w2').wineId, 'w2');
+  });
+
+  test('older data without the new fields still loads', () {
+    final w = Wine.fromJson({
+      'id': 'x',
+      'name': 'Old',
+      'grapes': ['메를로']
+    });
+    expect(w.grapePercents, isEmpty);
+    expect(w.grapesLabel, '메를로');
+    final n = TastingNote.fromJson({'id': 'n', 'wineId': 'x'});
+    expect(n.photos, isEmpty);
+  });
 }

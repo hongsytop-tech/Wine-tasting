@@ -16,6 +16,7 @@ class Wine {
     this.country = '',
     this.region = '',
     this.grapes = const [],
+    this.grapePercents = const {},
     this.imageUrl = '',
     this.source = 'manual',
     this.sourceId = '',
@@ -38,7 +39,12 @@ class Wine {
   final WineType type;
   final String country;
   final String region;
+
+  /// 품종 (블렌드면 여러 개, 입력 순서 유지).
   final List<String> grapes;
+
+  /// 블렌드 비율(%) — 품종 이름 → 비율. 비율을 모르면 비어 있거나 일부만 있다.
+  final Map<String, int> grapePercents;
   final String imageUrl;
 
   /// 'manual' | 'openfoodfacts' | ... (Edge Function 의 source 값)
@@ -61,6 +67,14 @@ class Wine {
 
   String get vintageLabel => vintage == null ? 'NV' : '$vintage';
 
+  bool get isBlend => grapes.length > 1;
+
+  /// "카베르네 소비뇽 60% · 메를로 40%" (비율 없는 품종은 이름만).
+  String get grapesLabel => [
+        for (final g in grapes)
+          grapePercents[g] == null ? g : '$g ${grapePercents[g]}%',
+      ].join(' · ');
+
   /// 리스트에 한 줄로 보여줄 산지 (지역, 국가).
   String get originLabel =>
       [region, country].where((e) => e.isNotEmpty).join(', ');
@@ -76,6 +90,7 @@ class Wine {
       country: J.str(j, 'country'),
       region: J.str(j, 'region'),
       grapes: J.strList(j, 'grapes'),
+      grapePercents: J.intMap(j, 'grapePercents', 'grape_percents'),
       imageUrl: J.str(j, 'imageUrl', 'image_url'),
       source: J.strOrNull(j, 'source') ?? 'manual',
       sourceId: J.str(j, 'sourceId', 'source_id'),
@@ -100,6 +115,7 @@ class Wine {
         'country': country,
         'region': region,
         'grapes': grapes,
+        'grapePercents': grapePercents,
         'imageUrl': imageUrl,
         'source': source,
         'sourceId': sourceId,
@@ -124,6 +140,7 @@ class Wine {
         'country': country,
         'region': region,
         'grapes': grapes,
+        'grape_percents': grapePercents,
         'image_url': imageUrl,
         'source': source,
         'source_id': sourceId,
@@ -149,6 +166,7 @@ class Wine {
     String? country,
     String? region,
     List<String>? grapes,
+    Map<String, int>? grapePercents,
     String? imageUrl,
     bool? isFavorite,
     Object? myRating = _keep,
@@ -165,6 +183,7 @@ class Wine {
         country: country ?? this.country,
         region: region ?? this.region,
         grapes: grapes ?? this.grapes,
+        grapePercents: grapePercents ?? this.grapePercents,
         imageUrl: imageUrl ?? this.imageUrl,
         source: source,
         sourceId: sourceId,

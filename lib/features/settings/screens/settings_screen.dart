@@ -20,12 +20,35 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _syncNow(BuildContext context, WidgetRef ref) async {
-    await ref.read(winesProvider.notifier).sync();
-    await ref.read(tastingNotesProvider.notifier).sync();
-    if (context.mounted) {
+    final errors = [
+      await ref.read(winesProvider.notifier).sync(),
+      await ref.read(tastingNotesProvider.notifier).sync(),
+    ].whereType<String>().toList();
+    if (!context.mounted) return;
+    if (errors.isEmpty) {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('동기화했습니다')));
+      return;
     }
+    // 실패 사유를 그대로 보여준다 (예: 마이그레이션 미실행 → 컬럼 없음 오류).
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('동기화 실패'),
+        content: SingleChildScrollView(
+          child: Text(
+            '이 기기의 기록은 남아 있고, 문제를 고친 뒤 다시 동기화하면 올라갑니다.\n\n'
+            '${errors.join('\n\n')}\n\n'
+            '컬럼·테이블이 없다는 오류라면 docs/SETUP.md 1단계의 SQL(0001~0005)을 '
+            '모두 실행했는지 확인하세요.',
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('닫기')),
+        ],
+      ),
+    );
   }
 
   @override

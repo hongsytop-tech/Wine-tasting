@@ -5,7 +5,7 @@ import '../../tasting/providers/tasting_providers.dart';
 import '../../tasting/widgets/taste_profile_view.dart';
 import '../models/wine.dart';
 import 'rating_stars.dart';
-import 'wine_thumb.dart';
+import 'wine_avatar.dart';
 
 class WineTile extends StatelessWidget {
   const WineTile({
@@ -42,7 +42,7 @@ class WineTile extends StatelessWidget {
           ].join(' · ');
     return ListTile(
       onTap: onTap,
-      leading: WineThumb(imageUrl: wine.imageUrl, type: wine.type),
+      leading: WineAvatar(wine: wine),
       title: Text(wine.name, maxLines: 2, overflow: TextOverflow.ellipsis),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

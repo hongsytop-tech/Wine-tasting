@@ -7,6 +7,8 @@ import '../../../core/sync/synced_repo.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../models/taste_attr.dart';
 import '../models/tasting_note.dart';
+import '../services/label_photo_service.dart';
+import 'photo_providers.dart';
 
 const _uuid = Uuid();
 
@@ -27,7 +29,10 @@ final tastingRepoProvider = Provider<SyncedRepo<TastingNote>>(
 final tastingNotesProvider =
     StateNotifierProvider<TastingNotesNotifier, List<TastingNote>>((ref) {
   ref.watch(currentUserProvider.select((u) => u?.id));
-  return TastingNotesNotifier(ref.watch(tastingRepoProvider));
+  return TastingNotesNotifier(
+    ref.watch(tastingRepoProvider),
+    ref.watch(labelPhotoServiceProvider),
+  );
 });
 
 /// 화면용 노트 (삭제 제외), 시음일 최신순.
@@ -49,11 +54,12 @@ final notesForWineProvider =
 });
 
 class TastingNotesNotifier extends StateNotifier<List<TastingNote>> {
-  TastingNotesNotifier(this._repo) : super(const []) {
+  TastingNotesNotifier(this._repo, this._photos) : super(const []) {
     _init();
   }
 
   final SyncedRepo<TastingNote> _repo;
+  final LabelPhotoService _photos;
 
   Future<void> _init() async {
     state = _repo.loadLocal();
@@ -62,9 +68,10 @@ class TastingNotesNotifier extends StateNotifier<List<TastingNote>> {
 
   /// 로컬 ↔ 서버 병합 (최신 updatedAt 우선). 로그아웃 상태면 no-op.
   /// 다른 계정의 캐시가 남아 있으면 병합하지 않고 버린다.
-  Future<void> sync() async {
+  /// 반환: 실패 사유 (성공·로그아웃 상태면 null).
+  Future<String?> sync() async {
     final user = SupabaseService.currentUser;
-    if (user == null) return;
+    if (user == null) return null;
     if (_repo.isForeignCache(user.id)) {
       state = const [];
       await _repo.clearLocal();
@@ -72,8 +79,10 @@ class TastingNotesNotifier extends StateNotifier<List<TastingNote>> {
     try {
       final merged = await _repo.pullAndMerge(state);
       if (merged != null) state = merged;
-    } catch (_) {
+      return null;
+    } catch (e) {
       // keep local on sync failure; retried on next launch/login
+      return '$e';
     }
   }
 
@@ -95,22 +104,32 @@ class TastingNotesNotifier extends StateNotifier<List<TastingNote>> {
   Future<void> save(TastingNote n) =>
       _putAll([n.copyWith(updatedAt: DateTime.now())]);
 
+  /// 노트 삭제 (soft-delete) + 라벨 사진 파일 삭제.
   Future<void> delete(String id) async {
     final now = DateTime.now();
-    await _putAll([
+    final targets = [
       for (final n in state)
-        if (n.id == id) n.copyWith(deletedAt: now, updatedAt: now),
+        if (n.id == id) n
+    ];
+    await _putAll([
+      for (final n in targets)
+        n.copyWith(deletedAt: now, updatedAt: now, photos: const []),
     ]);
+    await _photos.remove(targets.expand((n) => n.photos));
   }
 
   /// 와인을 지울 때 그 와인의 노트도 함께 지운다.
   Future<void> deleteForWine(String wineId) async {
     final now = DateTime.now();
-    await _putAll([
+    final targets = [
       for (final n in state)
-        if (n.wineId == wineId && !n.isDeleted)
-          n.copyWith(deletedAt: now, updatedAt: now),
+        if (n.wineId == wineId && !n.isDeleted) n,
+    ];
+    await _putAll([
+      for (final n in targets)
+        n.copyWith(deletedAt: now, updatedAt: now, photos: const []),
     ]);
+    await _photos.remove(targets.expand((n) => n.photos));
   }
 }
 
@@ -156,3 +175,13 @@ WineTastingSummary _summarize(List<TastingNote> notes) {
     profile: averageProfile(notes),
   );
 }
+
+/// wineId → 그 와인의 가장 최근 노트의 첫 사진 (썸네일 대체용).
+final latestPhotoByWineProvider = Provider<Map<String, String>>((ref) {
+  final out = <String, String>{};
+  // visibleNotesProvider 는 시음일 최신순이므로 처음 만난 사진이 최신.
+  for (final n in ref.watch(visibleNotesProvider)) {
+    if (n.photos.isNotEmpty) out.putIfAbsent(n.wineId, () => n.photos.first);
+  }
+  return out;
+});
