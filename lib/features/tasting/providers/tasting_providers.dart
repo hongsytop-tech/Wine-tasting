@@ -60,15 +60,18 @@ class TastingNotesNotifier extends StateNotifier<List<TastingNote>> {
     await sync();
   }
 
+  /// 로컬 ↔ 서버 병합 (최신 updatedAt 우선). 로그아웃 상태면 no-op.
+  /// 다른 계정의 캐시가 남아 있으면 병합하지 않고 버린다.
   Future<void> sync() async {
-    if (!SupabaseService.isSignedIn) return;
+    final user = SupabaseService.currentUser;
+    if (user == null) return;
+    if (_repo.isForeignCache(user.id)) {
+      state = const [];
+      await _repo.clearLocal();
+    }
     try {
-      final remote = await _repo.pull();
-      if (remote == null) return;
-      final r = _repo.merge(state, remote);
-      state = r.merged;
-      await _repo.saveLocal(state);
-      await _repo.upsert(r.toPush);
+      final merged = await _repo.pullAndMerge(state);
+      if (merged != null) state = merged;
     } catch (_) {
       // keep local on sync failure; retried on next launch/login
     }

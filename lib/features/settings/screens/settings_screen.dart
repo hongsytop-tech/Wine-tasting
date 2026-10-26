@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/providers/core_providers.dart';
 import '../../../core/supabase/supabase_service.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../tasting/providers/tasting_providers.dart';
@@ -15,9 +14,8 @@ class SettingsScreen extends ConsumerWidget {
   Future<void> _signOut(WidgetRef ref) async {
     // 로그아웃 시 이 기기의 캐시를 비운다 — 다음에 다른 계정으로 로그인했을 때
     // 이전 계정의 데이터가 병합(업로드)되는 것을 막기 위함. 데이터는 서버에 남아 있다.
-    final store = ref.read(localStorageProvider);
-    await store.remove(ref.read(winesRepoProvider).localKey);
-    await store.remove(ref.read(tastingRepoProvider).localKey);
+    await ref.read(winesRepoProvider).clearLocal();
+    await ref.read(tastingRepoProvider).clearLocal();
     await ref.read(authControllerProvider.notifier).signOut();
   }
 
