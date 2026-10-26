@@ -109,7 +109,7 @@ flutter run -d chrome
 
 ```bash
 flutter analyze && flutter test                        # 동기화 병합, 모델 직렬화, 0~10 점수·구버전 환산
-deno test supabase/functions/wine-search/              # Open Food Facts 매핑
+deno test --allow-env=OFF_USER_AGENT supabase/functions/wine-search/  # Open Food Facts 매핑·바코드 조회
 ```
 
 ## 다음 단계 후보

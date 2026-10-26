@@ -265,7 +265,8 @@ class WineReference {
     GrapeRef('츠바이겔트', GrapeColor.red, ['Zweigelt']),
     GrapeRef('코르비나', GrapeColor.red, ['Corvina']),
     GrapeRef('타나', GrapeColor.red, ['Tannat']),
-    GrapeRef('쁘띠 시라', GrapeColor.red, ['Petite Sirah', 'Durif']),
+    GrapeRef('쁘띠 시라', GrapeColor.red,
+        ['Petite Sirah', 'Petite Syrah', 'Durif', '쁘띠 쉬라', '프티 시라']),
     GrapeRef('피노 뫼니에', GrapeColor.red, ['Pinot Meunier', 'Meunier']),
     // 청포도
     GrapeRef('샤르도네', GrapeColor.white, ['Chardonnay', '샤도네이']),

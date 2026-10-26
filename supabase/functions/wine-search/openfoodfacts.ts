@@ -86,10 +86,30 @@ export function mapProduct(p: OffProduct): WineResult | null {
   };
 }
 
-async function getJson(url: string): Promise<unknown> {
+/// 응답 본문을 읽어 JSON 으로 돌려준다. HTTP 오류여도 본문이 JSON 이면 그대로
+/// 돌려줘서(예: 바코드 미등록 시 status 0) 호출하는 쪽이 판단하게 한다.
+/// 본문이 JSON 이 아니면 상태 코드와 본문 앞부분을 담아 실패시킨다 (원인 진단용).
+async function getJson(
+  url: string,
+): Promise<{ httpStatus: number; body: Record<string, unknown> }> {
   const res = await fetch(url, { headers: { 'User-Agent': userAgent() } });
-  if (!res.ok) throw new Error(`Open Food Facts HTTP ${res.status}`);
-  return await res.json();
+  const text = await res.text();
+  try {
+    const body = JSON.parse(text);
+    if (body && typeof body === 'object') return { httpStatus: res.status, body };
+  } catch {
+    // JSON 아님 → 아래에서 오류
+  }
+  throw new Error(
+    `Open Food Facts HTTP ${res.status}: ${text.replace(/\s+/g, ' ').slice(0, 160)}`,
+  );
+}
+
+/// 바코드 조회 후보: 입력값 + (13자리이고 0으로 시작하면) 앞 0 을 뗀 12자리 UPC.
+export function barcodeVariants(code: string): string[] {
+  const out = [code];
+  if (code.length === 13 && code.startsWith('0')) out.push(code.slice(1));
+  return out;
 }
 
 export const openFoodFacts: WineSource = {
@@ -108,21 +128,33 @@ export const openFoodFacts: WineSource = {
       tag_0: 'wines',
       fields: FIELDS,
     });
-    const body = (await getJson(`${BASE}/cgi/search.pl?${params}`)) as {
-      products?: OffProduct[];
-    };
-    return (body.products ?? [])
+    const { httpStatus, body } = await getJson(`${BASE}/cgi/search.pl?${params}`);
+    if (httpStatus >= 400) {
+      throw new Error(`Open Food Facts HTTP ${httpStatus}: ${JSON.stringify(body).slice(0, 160)}`);
+    }
+    return ((body.products as OffProduct[] | undefined) ?? [])
       .map(mapProduct)
       .filter((r): r is WineResult => r != null);
   },
 
   async searchByBarcode(code: string): Promise<WineResult[]> {
-    const body = (await getJson(
-      `${BASE}/api/v2/product/${encodeURIComponent(code)}?fields=${FIELDS}`,
-    )) as { status?: number; product?: OffProduct };
-    if (body.status !== 1 || !body.product) return [];
-    // 바코드 조회는 사용자가 병을 직접 찍은 것 — 와인 카테고리가 안 붙어 있어도 돌려준다.
-    const r = mapProduct({ code, ...body.product });
-    return r ? [r] : [];
+    for (const c of barcodeVariants(code)) {
+      const { httpStatus, body } = await getJson(
+        `${BASE}/api/v2/product/${encodeURIComponent(c)}?fields=${FIELDS}`,
+      );
+      const product = body.product as OffProduct | undefined;
+      if (body.status === 1 && product) {
+        // 바코드 조회는 사용자가 병을 직접 찍은 것 — 와인 카테고리가 안 붙어 있어도 돌려준다.
+        const r = mapProduct({ code: c, ...product });
+        return r ? [r] : [];
+      }
+      // status 0 = 미등록 → 다음 후보로. 그 외(형식이 다른 오류 응답)는 원인을 보여준다.
+      if (body.status !== 0) {
+        throw new Error(
+          `Open Food Facts HTTP ${httpStatus}: ${JSON.stringify(body).slice(0, 160)}`,
+        );
+      }
+    }
+    return [];
   },
 };
