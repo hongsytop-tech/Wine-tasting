@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/supabase/supabase_service.dart';
+import '../../../core/utils/thousands_formatter.dart';
 import '../../wines/models/wine.dart';
 import '../../wines/models/wine_reference.dart';
 import '../../wines/providers/wines_providers.dart';
@@ -101,7 +101,7 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
     }
     if (_wine != null) _info = WineInfo.fromWine(_wine!);
     _pairing = TextEditingController(text: n?.pairing ?? '');
-    _price = TextEditingController(text: n?.price?.toString() ?? '');
+    _price = TextEditingController(text: formatThousands(n?.price));
     _comment = TextEditingController(text: n?.comment ?? '');
   }
 
@@ -249,7 +249,7 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
     final n = _note!.copyWith(
       wineId: wine.id,
       pairing: _pairing.text.trim(),
-      price: int.tryParse(_price.text.trim()),
+      price: parseThousands(_price.text),
       comment: _comment.text.trim(),
     );
     await ref.read(tastingNotesProvider.notifier).save(n);
@@ -451,7 +451,7 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
                   TextField(
                     controller: _price,
                     keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    inputFormatters: const [ThousandsSeparatorInputFormatter()],
                     decoration: const InputDecoration(
                       labelText: '구매가',
                       suffixText: '원',
