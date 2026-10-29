@@ -293,13 +293,23 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
           ),
         ],
       ),
-      // 순서: 평점 → 총평 → 색·향·맛 점수 → 와인 정보 → 라벨 사진 → 시음일·페어링·구매가
+      // 순서: 라벨 사진 → 평점 → 총평 → 색·향·맛 점수 → 와인 정보 → 시음일·페어링·구매가
       // 와인 정보 섹션으로 스크롤할 수 있도록 ListView(지연 생성) 대신 전부 그린다.
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            section('라벨 사진'),
+            PhotoStripEditor(
+              photos: n.photos,
+              enabled: SupabaseService.isSignedIn,
+              uploading: _uploading,
+              uploadProgress: _uploadProgress,
+              maxPhotos: LabelPhotoService.maxPerNote,
+              onAdd: _addPhoto,
+              onRemove: _removePhoto,
+            ),
             section('평점'),
             Row(
               children: [
@@ -353,16 +363,6 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
             ),
             section('와인 정보'),
             _wineSection(theme),
-            section('라벨 사진'),
-            PhotoStripEditor(
-              photos: n.photos,
-              enabled: SupabaseService.isSignedIn,
-              uploading: _uploading,
-              uploadProgress: _uploadProgress,
-              maxPhotos: LabelPhotoService.maxPerNote,
-              onAdd: _addPhoto,
-              onRemove: _removePhoto,
-            ),
             section('기타'),
             ListTile(
               contentPadding: EdgeInsets.zero,
