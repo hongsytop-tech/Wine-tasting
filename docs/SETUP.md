@@ -75,7 +75,7 @@ GitHub Actions로 배포합니다. PC에 아무것도 설치하지 않아도 됩
    | `SUPABASE_PROJECT_REF` | 2-2의 프로젝트 ref |
 
 ### 2-4. 배포 실행
-1. https://github.com/hongsytop-tech/Wine-tasting/actions → 왼쪽 목록에서 **Deploy Supabase Function (wine-search)**를 고릅니다.
+1. https://github.com/hongsytop-tech/Wine-tasting/actions → 왼쪽 목록에서 **Deploy Supabase Functions (wine-search, tasting-suggest)**를 고릅니다.
 2. **Run workflow** → Branch `claude/practical-dijkstra-i4je7l` → **Run workflow**를 누릅니다.
    - 왼쪽 목록에 이 워크플로우가 안 보이면 저장소의 기본 브랜치에 이 파일이 없는 것입니다. PR을 병합하면 나타납니다.
 3. 초록색 체크가 뜨면 성공입니다.
@@ -90,6 +90,21 @@ GitHub Actions로 배포합니다. PC에 아무것도 설치하지 않아도 됩
 > 대시보드 편집기가 여러 파일을 지원하는지는 확인하지 못했습니다. 위의 Actions 방법을 권장합니다.
 
 ---
+
+### 2-6. AI 점수·키워드 채우기용 Claude API 키 (`tasting-suggest`)
+테이스팅 노트의 **"총평으로 점수·키워드 채우기 (AI)"** 버튼이 쓰는 키입니다. 이 버튼을 쓰지 않으면 넣지 않아도 됩니다.
+
+1. Supabase 대시보드 **Edge Functions → Secrets**에 `ANTHROPIC_API_KEY`가 있는지 확인합니다.
+   - Youtube-Filtering을 같은 프로젝트에 설정하면서 이미 넣었다면 그대로 씁니다. Secret은 프로젝트 전체가 함께 씁니다.
+2. 없다면 https://console.anthropic.com 에서 API 키를 만들어 `ANTHROPIC_API_KEY`로 추가합니다.
+3. 2-4의 배포 워크플로우가 `wine-search`와 `tasting-suggest`를 함께 배포합니다.
+
+**비용과 한계**
+- 버튼을 누를 때마다 Claude API를 한 번 호출하고, 그만큼 비용이 듭니다.
+  - 모델은 `claude-opus-5-5`로, 입력 100만 토큰당 $4, 출력 100만 토큰당 $20입니다.
+  - 한 번에 드는 비용은 총평 길이에 따라 다릅니다. 실제 호출로 측정하지는 않았습니다.
+- 더 싸게 쓰려면 `supabase/functions/tasting-suggest/index.ts`의 `MODEL`을 `claude-haiku-5-5`(입력 $0.10, 출력 $0.50 / 100만 토큰)로 바꾸고 다시 배포하면 됩니다. 다만 해석 품질이 달라질 수 있습니다.
+- 로그인한 사용자만 호출할 수 있습니다. 결과는 제안일 뿐이고, 사용자가 고른 항목만 노트에 들어갑니다.
 
 ## 3단계. 로그인 인증 메일 설정
 
@@ -156,4 +171,6 @@ GitHub Actions로 배포합니다. PC에 아무것도 설치하지 않아도 됩
 | 라벨 사진 업로드 실패 (`Bucket not found` 등) | 0005 미실행 | 1단계 5번 파일 실행 |
 | "지금 동기화" 시 `grape_percents`·`photos` 컬럼 오류 | 0005 미실행 | 1단계 5번 파일 실행 |
 | "지금 동기화" 시 `vivino_rating` 컬럼 오류 | 0006 미실행 | 1단계 6번 파일 실행 |
-| Actions "Deploy Supabase Function" 실패 | Secret 누락 또는 토큰 만료 | 로그의 `::error::` 메시지 확인, 2-1·2-3 다시 하기 |
+| AI 채우기 시 "ANTHROPIC_API_KEY secret 이 없습니다" | Secret 없음 | 2-6 |
+| AI 채우기 시 "tasting-suggest 함수가 없습니다" | 함수 미배포 | 2-4 다시 실행 |
+| Actions "Deploy Supabase Functions" 실패 | Secret 누락 또는 토큰 만료 | 로그의 `::error::` 메시지 확인, 2-1·2-3 다시 하기 |

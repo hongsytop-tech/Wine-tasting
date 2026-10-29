@@ -10,7 +10,11 @@ class ScoreSlider extends StatelessWidget {
     required this.attr,
     required this.value,
     required this.onChanged,
+    this.compact = false,
   });
+
+  /// true 면 아래의 끝 설명 줄(0 옅음 ~ 진함 10)을 숨겨 한 줄 높이로 표시.
+  final bool compact;
 
   final TasteAttr attr;
   final int? value;
@@ -34,20 +38,22 @@ class ScoreSlider extends StatelessWidget {
                   min: 0,
                   max: TasteAttr.maxScore.toDouble(),
                   divisions: TasteAttr.maxScore,
-                  label: '${v ?? 0}',
+                  // 값 말풍선에 끝 설명을 함께 보여 compact 모드에서도 방향을 알 수 있게.
+                  label: '${v ?? 0} (${attr.low}→${attr.high})',
                   onChanged: (d) => onChanged(d.round()),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('0 ${attr.low}', style: small),
-                    Text('${attr.high} 10', style: small),
-                  ],
+              if (!compact)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('0 ${attr.low}', style: small),
+                      Text('${attr.high} 10', style: small),
+                    ],
+                  ),
                 ),
-              ),
             ],
           ),
         ),

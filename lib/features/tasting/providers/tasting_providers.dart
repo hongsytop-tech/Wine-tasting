@@ -185,3 +185,19 @@ final latestPhotoByWineProvider = Provider<Map<String, String>>((ref) {
   }
   return out;
 });
+
+/// 내 노트에서 자주 쓴 향·맛 키워드 (많이 쓴 순). 키워드 입력의 빠른 선택용.
+final frequentKeywordsProvider = Provider<List<String>>((ref) {
+  final counts = <String, int>{};
+  for (final n in ref.watch(visibleNotesProvider)) {
+    for (final k in n.keywords) {
+      counts[k] = (counts[k] ?? 0) + 1;
+    }
+  }
+  final list = counts.keys.toList()
+    ..sort((a, b) {
+      final c = counts[b]!.compareTo(counts[a]!);
+      return c != 0 ? c : a.compareTo(b);
+    });
+  return list;
+});

@@ -221,7 +221,7 @@ class _NoteTile extends StatelessWidget {
     final summary = [
       if (averageProfile([note]).isNotEmpty)
         profileSummary(averageProfile([note])),
-      if (note.aromas.isNotEmpty) note.aromas.take(4).join(', '),
+      if (note.keywords.isNotEmpty) note.keywords.take(4).join(', '),
       if (note.comment.isNotEmpty) note.comment,
     ].join(' — ');
     return Card(

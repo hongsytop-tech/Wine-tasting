@@ -46,4 +46,8 @@ class TastingVocab {
     '효모/숙성': ['브리오슈', '비스킷', '버터', '견과류', '꿀'],
     '흙/미네랄': ['흙', '버섯', '가죽', '담배', '젖은 돌', '부싯돌', '석유'],
   };
+
+  /// 모든 묘사어 (그룹 순서대로, 키워드 자동완성·AI 제안의 기준 목록).
+  static final List<String> allDescriptors =
+      aromaGroups.values.expand((e) => e).toList(growable: false);
 }

@@ -135,7 +135,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                   ref.read(noteFilterProvider).copyWith(query: t),
               decoration: const InputDecoration(
                 prefixIcon: Icon(Icons.search),
-                hintText: '와인 이름·생산자·총평 검색',
+                hintText: '와인 이름·생산자·총평·키워드 검색',
                 isDense: true,
                 border: OutlineInputBorder(),
               ),

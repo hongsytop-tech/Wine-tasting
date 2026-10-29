@@ -18,8 +18,9 @@ import '../models/tasting_vocab.dart';
 import '../providers/photo_providers.dart';
 import '../services/label_photo_service.dart';
 import '../providers/tasting_providers.dart';
-import '../widgets/descriptor_picker.dart';
+import '../widgets/keyword_input.dart';
 import '../widgets/photo_strip_editor.dart';
+import '../widgets/suggestion_sheet.dart';
 import '../widgets/score_slider.dart';
 
 /// 테이스팅 노트 작성·수정.
@@ -56,6 +57,21 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
   List<String> _originalPhotos = const [];
   bool _uploading = false;
   String? _uploadProgress;
+  bool _suggesting = false;
+
+  /// 기본 화면의 핵심 점수 (나머지는 "자세히").
+  static const _coreAttrs = [
+    TasteAttr.colorIntensity,
+    TasteAttr.sweetness,
+    TasteAttr.acidity,
+    TasteAttr.tannin,
+    TasteAttr.body,
+  ];
+  static const _detailAttrs = [
+    TasteAttr.aromaIntensity,
+    TasteAttr.alcohol,
+    TasteAttr.finish,
+  ];
   bool _saved = false;
 
   /// dispose 에서는 ref 를 쓸 수 없으므로 미리 잡아 둔다.
@@ -176,6 +192,34 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
     }
   }
 
+  /// "자세히" 안의 항목 중 기록된 것이 있으면 펼친 채로 시작.
+  bool _hasDetail(TastingNote n) =>
+      n.color.isNotEmpty ||
+      _detailAttrs.any((a) => a.of(n) != null) ||
+      n.pairing.isNotEmpty ||
+      n.price != null;
+
+  /// 총평을 AI 로 해석해 점수·키워드·색상을 제안 → 사용자가 고른 것만 적용.
+  Future<void> _suggestFromComment() async {
+    setState(() => _suggesting = true);
+    try {
+      final suggestion = await ref
+          .read(tastingSuggestServiceProvider)
+          .suggest(comment: _comment.text, type: _info.type);
+      if (!mounted) return;
+      final applied = await showSuggestionSheet(
+        context,
+        note: _note!,
+        suggestion: suggestion,
+      );
+      if (applied != null) setState(() => _note = applied);
+    } catch (e) {
+      _snack('$e');
+    } finally {
+      if (mounted) setState(() => _suggesting = false);
+    }
+  }
+
   void _removePhoto(String path) => _set(
       (n) => n.copyWith(photos: n.photos.where((p) => p != path).toList()));
 
@@ -269,6 +313,7 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
     Widget score(TasteAttr a) => ScoreSlider(
           attr: a,
           value: a.of(n),
+          compact: true,
           onChanged: (v) => _set((x) => x.withAttr(a, v)),
         );
 
@@ -293,7 +338,7 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
           ),
         ],
       ),
-      // 순서: 라벨 사진 → 평점 → 총평 → 색·향·맛 점수 → 와인 정보 → 시음일·페어링·구매가
+      // 순서: 라벨 사진 → 평점 → 총평(+AI 채우기) → 핵심 점수 → 키워드 → 자세히 → 와인 정보
       // 와인 정보 섹션으로 스크롤할 수 있도록 ListView(지연 생성) 대신 전부 그린다.
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
@@ -326,68 +371,98 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
             TextField(
               controller: _comment,
               minLines: 3,
-              maxLines: 8,
+              maxLines: 10,
               decoration: const InputDecoration(
-                hintText: '이 와인에 대한 한 줄 평이나 느낌',
+                hintText: '자유롭게 적으세요. 예) 색: 진한 루비색 / 탄닌: 평균 이상 / 향: 후추, 바닐라',
                 border: OutlineInputBorder(),
               ),
             ),
-            section('외관'),
-            Wrap(
-              spacing: 6,
-              children: [
-                for (final c in TastingVocab.colorsFor(type))
-                  ChoiceChip(
-                    label: Text(c),
-                    selected: n.color == c,
-                    onSelected: (_) =>
-                        _set((x) => x.copyWith(color: x.color == c ? '' : c)),
-                  ),
-              ],
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: _suggesting ? null : _suggestFromComment,
+                icon: _suggesting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_awesome, size: 18),
+                label: const Text('총평으로 점수·키워드 채우기 (AI)'),
+              ),
             ),
-            score(TasteAttr.colorIntensity),
-            section('향 (Nose)'),
-            score(TasteAttr.aromaIntensity),
-            DescriptorPicker(
-              selected: n.aromas,
-              onChanged: (v) => _set((x) => x.copyWith(aromas: v)),
+            section('핵심 점수 · 0~10'),
+            Text(
+              '0 = 옅음·드라이·낮음·가벼움, 10 = 진함·스위트·높음·무거움. 비워 두면 기록 안 함.',
+              style: theme.textTheme.bodySmall,
             ),
-            section('맛 (Palate) · 0~10점'),
-            for (final a in TasteAttr.palate)
+            for (final a in _coreAttrs)
               if (a.appliesTo(type) || a.of(n) != null) score(a),
-            const SizedBox(height: 8),
-            Text('맛에서 느낀 풍미', style: theme.textTheme.labelLarge),
-            DescriptorPicker(
-              selected: n.flavors,
-              onChanged: (v) => _set((x) => x.copyWith(flavors: v)),
+            section('향·맛 키워드'),
+            KeywordInput(
+              selected: n.keywords,
+              frequent: ref.watch(frequentKeywordsProvider),
+              onChanged: (k) => _set((x) => x.withKeywords(k)),
+            ),
+            const SizedBox(height: 12),
+            // 자세히: 덜 쓰는 항목 (기록된 값이 있으면 펼쳐서 시작).
+            Card(
+              margin: EdgeInsets.zero,
+              child: ExpansionTile(
+                initiallyExpanded: _hasDetail(n),
+                title: const Text('자세히'),
+                subtitle:
+                    const Text('색상 이름 · 향 강도 · 알코올 · 여운 · 시음일 · 페어링 · 구매가'),
+                childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Wrap(
+                      spacing: 6,
+                      children: [
+                        for (final c in TastingVocab.colorsFor(type))
+                          ChoiceChip(
+                            label: Text(c),
+                            selected: n.color == c,
+                            onSelected: (_) => _set(
+                              (x) => x.copyWith(color: x.color == c ? '' : c),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  for (final a in _detailAttrs) score(a),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.event),
+                    title: Text(
+                      '시음일 ${DateFormat('yyyy년 M월 d일 (E)', 'ko_KR').format(n.tastedAt)}',
+                    ),
+                    trailing: const Icon(Icons.edit_calendar),
+                    onTap: _pickDate,
+                  ),
+                  TextField(
+                    controller: _pairing,
+                    decoration: const InputDecoration(
+                      labelText: '페어링한 음식',
+                      isDense: true,
+                    ),
+                  ),
+                  TextField(
+                    controller: _price,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(
+                      labelText: '구매가',
+                      suffixText: '원',
+                      isDense: true,
+                    ),
+                  ),
+                ],
+              ),
             ),
             section('와인 정보'),
             _wineSection(theme),
-            section('기타'),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.event),
-              title: Text(
-                '시음일 ${DateFormat('yyyy년 M월 d일 (E)', 'ko_KR').format(n.tastedAt)}',
-              ),
-              trailing: const Icon(Icons.edit_calendar),
-              onTap: _pickDate,
-            ),
-            TextField(
-              controller: _pairing,
-              decoration:
-                  const InputDecoration(labelText: '페어링한 음식', isDense: true),
-            ),
-            TextField(
-              controller: _price,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(
-                labelText: '구매가',
-                suffixText: '원',
-                isDense: true,
-              ),
-            ),
           ],
         ),
       ),

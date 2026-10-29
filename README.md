@@ -29,18 +29,21 @@
     - Vivino 페이지에서 자동으로 가져오지는 않습니다(Vivino 약관이 자동 수집을 금지).
   - **블렌드**: 품종을 여러 개 넣고, 알면 비율(%)도 입력합니다. 합계가 100%가 아니면 경고합니다.
   - 검색 결과의 원산지 텍스트(예: "Bordeaux, France")는 목록과 정확히 일치할 때만 국가·지역으로 나눕니다.
-- **테이스팅 노트 = 마신 기록 1회**: WSET 체계적 시음법을 단순화한 구조
-  - 화면 순서: **라벨 사진 → 평점 → 총평 → 외관(색)·향·맛 점수** → 와인 정보 → 시음일·페어링·구매가
-  - **와인 정보**: 내 와인에서 고르거나 새 와인을 입력합니다. 여기서 고친 정보는 와인에도 반영됩니다. 와인 이름 없이 저장하면 이 칸으로 이동합니다.
-  - **라벨 사진**: 카메라(1장)나 앨범(**여러 장 한 번에 선택**)에서 올립니다. 노트당 최대 10장이며 로그인이 필요합니다. Supabase Storage 비공개 버킷에 저장되고, 본인만 볼 수 있습니다.
-    - 사진은 긴 변 1600px로 줄여 올립니다.
-    - 저장하지 않고 나가거나 사진을 빼거나 노트를 지우면 파일도 삭제합니다.
-  - **특징 점수 0~10** (슬라이더, ✕로 "기록 안 함")
-    - 외관: 색(옅음↔진함). 색상 이름(루비·가넷 등)은 별도 선택
-    - 향: 향 강도(약함↔강함)
-    - 맛: 당도(드라이↔스위트), 산미, 타닌, 알코올, 바디, 여운
-    - 타닌 입력은 화이트·스파클링에서 숨깁니다.
-  - 향·맛 묘사어: 12개 그룹 프리셋에서 고르거나 직접 입력
+- **테이스팅 노트 = 마신 기록 1회** — 기본 화면은 간결하게, 덜 쓰는 항목은 "자세히"에 접어 둡니다.
+  - 화면 순서: **라벨 사진 → 평점 → 총평 → 핵심 점수 → 향·맛 키워드** → 자세히 → 와인 정보
+  - **라벨 사진**: 카메라(1장)나 앨범(여러 장 한 번에)에서 올립니다. 노트당 최대 10장이며 로그인이 필요합니다.
+    - Supabase Storage 비공개 버킷에 저장되고, 본인만 볼 수 있습니다.
+    - 긴 변 1600px로 줄여 올립니다. 저장하지 않고 나가거나 사진을 빼거나 노트를 지우면 파일도 삭제합니다.
+  - **총평**: 자유롭게 씁니다.
+    - **"총평으로 점수·키워드 채우기 (AI)"**: Claude가 총평을 읽고 점수·키워드·색상을 제안합니다. 각 제안에는 근거 구절이 붙습니다.
+    - 사용자가 고른 것만 적용합니다. 이미 값이 있는 항목은 기본으로 체크하지 않습니다.
+  - **핵심 점수 0~10**: 색·당도·산미·타닌·바디. 설명 줄 없는 얇은 슬라이더이며, 값 말풍선에 방향(옅음→진함 등)이 함께 나옵니다.
+  - **향·맛 키워드**: 입력칸 하나로 씁니다.
+    - 글자를 치면 후보가 나오고, Enter로 목록에 없는 단어도 넣을 수 있습니다.
+    - 자주 쓴 키워드는 칩으로 바로 고릅니다. 전체 목록(12개 그룹)도 볼 수 있습니다.
+    - 예전의 향·맛 풍미 기록은 합쳐서 보여주고, 편집하면 하나로 저장됩니다.
+  - **자세히**(접힘): 색상 이름, 향 강도·알코올·여운 점수, 시음일, 페어링, 구매가. 값이 있으면 펼친 채로 열립니다.
+  - **와인 정보**: 내 와인에서 고르거나 새로 입력합니다. 여기서 고친 정보는 와인에도 반영됩니다. 와인 이름 없이 저장하면 이 칸으로 이동합니다.
 - 노트가 1개 이상 있는 와인이 "마신 와인"입니다. 따로 상태 값을 두지 않고 노트에서 계산합니다.
 
 ## 와인 데이터 출처
@@ -82,6 +85,7 @@ lib/
 supabase/
   migrations/0001 ~ 0006 (wines · tasting_notes · 검색 캐시 · 0~10점 · 블렌드·라벨 사진 · Vivino 평점)
   functions/wine-search/{index,openfoodfacts,cache,types}.ts
+  functions/tasting-suggest/{index,suggest}.ts   # 총평 → 점수·키워드 제안 (Claude API)
 .github/workflows/{deploy-web,deploy-supabase-function,build-apk,cleanup-artifacts}.yml
 web_assets/        # 웹 아이콘(파비콘·PWA·iOS) + 원본 icon.svg — CI가 web/ 에 복사
 android_assets/    # 안드로이드 런처 아이콘(mipmap-*) — APK 빌드 시 복사
@@ -95,7 +99,7 @@ scripts/generate_icons.mjs  # icon.svg → 위 PNG 전부 생성 (아이콘 바�
 단계별 상세 설명은 [`docs/SETUP.md`](./docs/SETUP.md)에 있습니다. 요약하면 다음과 같습니다.
 
 1. Supabase SQL Editor에서 `supabase/migrations/0001` ~ `0006`을 순서대로 실행합니다.
-2. GitHub Secrets에 `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`를 등록하고, Actions → **Deploy Supabase Function (wine-search)**를 실행합니다.
+2. GitHub Secrets에 `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`를 등록하고, Actions → **Deploy Supabase Functions (wine-search, tasting-suggest)**를 실행합니다. AI 채우기를 쓰려면 Supabase secret `ANTHROPIC_API_KEY`도 필요합니다.
 3. Supabase Authentication → URL Configuration → Redirect URLs에 앱 주소를 추가합니다.
 4. GitHub Secrets에 `SUPABASE_URL`, `SUPABASE_ANON_KEY`를 등록합니다.
 5. Actions → **Deploy Web (GitHub Pages)**를 실행합니다.
@@ -113,7 +117,7 @@ flutter run -d chrome
 
 ```bash
 flutter analyze && flutter test                        # 동기화 병합, 모델 직렬화, 0~10 점수·구버전 환산
-deno test --allow-env=OFF_USER_AGENT supabase/functions/wine-search/  # Open Food Facts 매핑·바코드 조회
+deno test --allow-env=OFF_USER_AGENT supabase/functions/  # Open Food Facts 매핑·바코드 조회, AI 제안 입력·출력 정리
 ```
 
 ## 다음 단계 후보
@@ -121,5 +125,6 @@ deno test --allow-env=OFF_USER_AGENT supabase/functions/wine-search/  # Open Foo
 - [ ] LWIN DB(무료)를 Postgres에 적재해 이름 검색 보강 (라이선스 버전 확인 후)
 - [ ] Wine-Searcher API 계약 시 `WineSource` 추가 (평론가 점수·가격)
 - [ ] 올린 라벨 사진 → Claude 비전으로 이름·빈티지 추출해 와인 정보 자동 입력
+- [ ] AI 채우기 호출 횟수 제한 (현재는 로그인 사용자 제한만)
 - [ ] 바코드 카메라 스캔 (`mobile_scanner`)
 - [ ] 통계: 종류별/국가별 분포, 평점 추이, 마신 와인들의 특징 비교(레이더 차트)

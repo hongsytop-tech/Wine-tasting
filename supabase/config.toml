@@ -4,3 +4,8 @@ project_id = "wine-tasting"
 # Supabase anon/user JWT 가 있어야 호출 가능).
 [functions.wine-search]
 verify_jwt = true
+
+# tasting-suggest: Claude API 호출(비용 발생) — 게이트웨이 JWT 검증 + 함수 안에서
+# 로그인 사용자인지 한 번 더 확인한다. secret: ANTHROPIC_API_KEY
+[functions.tasting-suggest]
+verify_jwt = true

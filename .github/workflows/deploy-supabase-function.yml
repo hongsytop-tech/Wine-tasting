@@ -1,4 +1,4 @@
-name: Deploy Supabase Function (wine-search)
+name: Deploy Supabase Functions (wine-search, tasting-suggest)
 
 # 수동 실행 전용. 대시보드 편집기에 여러 파일(_shared/cors.ts 포함)을 붙여넣는 대신
 # Supabase CLI 로 supabase/functions/wine-search 를 그대로 배포한다.
@@ -29,5 +29,5 @@ jobs:
         with:
           version: latest
 
-      - name: Deploy wine-search
-        run: supabase functions deploy wine-search --project-ref "$PROJECT_REF" --use-api
+      - name: Deploy functions
+        run: supabase functions deploy wine-search tasting-suggest --project-ref "$PROJECT_REF" --use-api

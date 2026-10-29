@@ -191,6 +191,14 @@ class TastingNote {
         'deleted_at': J.iso(deletedAt),
       };
 
+  /// 향·맛 키워드 — 예전에 따로 기록하던 향(aromas)과 맛 풍미(flavors)를 합친 것.
+  /// 지금 화면은 이 하나로 입력하고, 저장은 [withKeywords] 로 aromas 에 모은다.
+  List<String> get keywords => {...aromas, ...flavors}.toList();
+
+  /// 키워드를 aromas 에 모으고 flavors 는 비운다 (예전 노트도 편집하면 합쳐짐).
+  TastingNote withKeywords(List<String> k) =>
+      copyWith(aromas: k, flavors: const []);
+
   /// 특징 점수 하나만 바꾼 사본.
   TastingNote withAttr(TasteAttr a, int? v) {
     switch (a) {

@@ -45,7 +45,7 @@ class NoteFilter {
     this.groupBy,
   });
 
-  /// 와인 이름·생산자·총평에서 찾을 글자.
+  /// 와인 이름·생산자·총평·키워드에서 찾을 글자.
   final String query;
 
   /// 기준별 선택값. 같은 기준 안에서는 OR, 기준끼리는 AND.
@@ -79,7 +79,12 @@ class NoteFilter {
   bool matches(TastingNote n, Wine? w) {
     final q = foldText(query);
     if (q.isNotEmpty) {
-      final hay = [w?.name ?? '', w?.producer ?? '', n.comment].map(foldText);
+      final hay = [
+        w?.name ?? '',
+        w?.producer ?? '',
+        n.comment,
+        n.keywords.join(' '),
+      ].map(foldText);
       if (!hay.any((h) => h.contains(q))) return false;
     }
     for (final e in selected.entries) {
